@@ -13,6 +13,8 @@ The [Color Picker JSColor](http://jscolor.com/) is used to provide the color pic
 
 # Usage
 
+**NOTE:** Inlet.js is under the [MIT license](https://opensource.org/licenses/MIT), but JSColor is under the [GPL v3](http://www.gnu.org/licenses/gpl-3.0.en.html)
+
 All you need is the inlet.js file from src/inlet.js  
 but you do need to make sure you have all of the libs this depends on (found in the example/lib folder):
 ColorPicker  
