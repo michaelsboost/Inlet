@@ -11,8 +11,6 @@ The the slider code is originally adapted from Gabriel Florit's [Water project](
 
 The [Color Picker JSColor](http://jscolor.com/) is used to provide the color picker, and [Color.Space.js](https://github.com/mudcube/Color.Space.js) translates between color spaces.
 
-This project is used in mikethedj4's [kodeWeave](http://kodeweave.sourceforge.net/)  
-
 # Usage
 
 All you need is the inlet.js file from src/inlet.js  
