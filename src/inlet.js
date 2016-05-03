@@ -31,9 +31,11 @@ Inlet = (function() {
     var wrapper = editor.getWrapperElement();
     wrapper.addEventListener("mouseup", onClick);
     document.body.addEventListener("mouseup", windowOnClick);
+    wrapper.addEventListener("touchend", onClick);
+    document.body.addEventListener("touchend", windowOnClick);
     editor.setOption("onKeyEvent", onKeyDown);
 
-    //make the clicker
+    // make the clicker
     var clickerDiv = document.createElement("div");
     clickerDiv.className = "inlet_clicker";
     clickerDiv.style.visibility = "hidden";
@@ -45,7 +47,7 @@ Inlet = (function() {
     clicker.addEventListener("change", onClicker);
     clickerDiv.appendChild(clicker)
 
-    //what to do when the clicker is clicked
+    // what to do when the clicker is clicked
     function onClicker(event) {
       var value = String(clicker.checked);
       var cursor = editor.getCursor(true);
@@ -56,10 +58,10 @@ Inlet = (function() {
       editor.replaceRange(value, start, end);
     }
 
-    //make the slider
+    // make the slider
     var sliderDiv = document.createElement("div");
     sliderDiv.className = "inlet_slider";
-    //some styles are necessary for behavior
+    // some styles are necessary for behavior
     sliderDiv.style.visibility = "hidden";
     if(sliderWidth) {
       sliderDiv.style.width = sliderWidth;
@@ -71,8 +73,8 @@ Inlet = (function() {
     }
     sliderDiv.style.top = 0;
     container.appendChild(sliderDiv);
-    //TODO: figure out how to capture key events when slider has focus
-    //sliderDiv.addEventListener("keydown", onKeyDown);
+    // TODO: figure out how to capture key events when slider has focus
+    // sliderDiv.addEventListener("keydown", onKeyDown);
 
     var slider = document.createElement("input");
     slider.className = "range";
@@ -82,6 +84,7 @@ Inlet = (function() {
     // we don't enable this behavior in FF because it's slider is buggy
     var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
     if(!isFirefox) slider.addEventListener("mouseup", onSlideMouseUp);
+    if(!isFirefox) slider.addEventListener("touchend", onSlideMouseUp);
     sliderDiv.appendChild(slider);
 
     function onSlide(event) {
@@ -128,8 +131,8 @@ Inlet = (function() {
       } else {
         event = arguments[1];
       }
-      //if left or right arrows, we can step through the slider
-      //disable the slider + picker on key event
+      // if left or right arrows, we can step through the slider
+      // disable the slider + picker on key event
       if(event.keyCode == LEFT || event.keyCode == DOWN) {
         //LEFT
         if(sliderDiv.style.visibility === "visible") {
@@ -156,7 +159,7 @@ Inlet = (function() {
     }
 
     var pickerCallback = function(color, type) {
-        //set the cursor to desired location
+        // set the cursor to desired location
         var cursor = editor.getCursor();
         // we need to re-match in case the size of the string changes
         if (!type) return;
@@ -174,7 +177,7 @@ Inlet = (function() {
     picker = new thistle.Picker("#ffffff")
     // setup colorpicker position
 
-    //Handle clicks
+    //H andle clicks
     function onClick(ev) {
       // bail out if we were doing a selection and not a click
       if (editor.somethingSelected()) {
@@ -212,7 +215,7 @@ Inlet = (function() {
         picker.presentModal(pickerLeft,pickerTop)
         picker.on('changed',function() {
           picked = picker.getCSS()
-          //translate hsl return to hex
+          // translate hsl return to hex
           picked = Color.Space(picked, "W3>HSL>RGB>HEX24>W3");
           pickerCallback(picked,'hex')
         })
@@ -232,7 +235,7 @@ Inlet = (function() {
         picker.presentModal(pickerLeft,pickerTop)
         picker.on('changed',function() {
           picked = picker.getCSS()
-          //translate hsl return to rgb
+          // translate hsl return to rgb
           picked = Color.Space(picked, "W3>HSL>RGB>W3");
           pickerCallback(picked,'rgb')
         })
@@ -281,8 +284,7 @@ Inlet = (function() {
           clicker.setAttribute("checked","checked")
           clicker.addEventListener("change", onClicker);
           clickerDiv.appendChild(clicker)
-        }
-        else {
+        } else {
           // sometimes removing the attribute checked is not enough
           clickerDiv.removeChild(clicker)
           clicker = document.createElement("input");
@@ -294,18 +296,14 @@ Inlet = (function() {
 
         clickerDiv.style.top = clickerTop - 3 + "px";
         clickerDiv.style.left = clickerLeft + "px";
-
         clickerDiv.style.visibility = "visible";
-
-      } else {
-
       }
     }
 
     function getSliderRange(value) {
-      //this could be substituted out for other heuristics
+      // this could be substituted out for other heuristics
       var range, step, sliderMin, sliderMax;
-      //these values were chosen by Gabriel Florit for his livecoding project, they work really well!
+      // these values were chosen by Gabriel Florit for his livecoding project, they work really well!
       if (value === 0) {
         range = [-100, 100];
       } else {
@@ -344,7 +342,7 @@ Inlet = (function() {
           break;
 
         case 'rgb':
-          re = /rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)/g;
+          re = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:\s*,\s*(\d+(?:\.\d+)?)\s*)?\)/g;
           break;
 
         case 'hex':
@@ -401,8 +399,5 @@ Inlet = (function() {
     return { top: _y, left: _x };
 }
 
-
-
   return inlet;
-
 })();
