@@ -1,7 +1,7 @@
 # Inlet
-Inlet is a "plugin" for CodeMirror2 which pops up a slider whenever you click on a number or a color picker when you click on a Hex string (i.e. "#ff0000").  You can also click on hsl strings (i.e. "hsl(100,100%,90%") to get the color picker.
+Inlet is a "plugin" for CodeMirror2+ which pops up an inline color picker and numeric slider whenever you click on a number, a Hex String (ex. "`#0004ff`"), RGB String (ex. "`rgb(0, 4, 255)`"), or HSL String (ex. "`hsla(239, 100%, 50%, 1)`").
 
-See an example at http://mikethedj4.github.com/Inlet
+See an example at [http://mikethedj4.github.com/Inlet](http://mikethedj4.github.com/Inlet)
 
 # About
 
@@ -9,22 +9,25 @@ This project is inspired by Bret Victor's talk ["Inventing on Principle"](https:
 
 The the slider code is originally adapted from Gabriel Florit's [Water project](http://gabrielflor.it/water) the predecesor for [Livecoding.io](http://livecoding.io)
 
-The [Color Picker JSColor](http://jscolor.com/) is used to provide the color picker, and [Color.Space.js](https://github.com/mudcube/Color.Space.js) translates between color spaces.
+The [JQuery MiniColors](http://labs.abeautifulsite.net/jquery-minicolors/) is used to provide the color picker and [TinyColor](https://bgrins.github.io/TinyColor/) translates between color spaces.
+
+# License
+
+[MIT](https://github.com/mikethedj4/Inlet/blob/gh-pages/LICENSE)
 
 # Usage
 
-**NOTE:** Inlet.js is under the [MIT license](https://opensource.org/licenses/MIT), but JSColor is under the [GPL v3](http://www.gnu.org/licenses/gpl-3.0.en.html)
+- [JQuery](http://jquery.com/)
+- [CodeMirror](http://codemirror.net/) ( >= 3.1 )
+- [Inlet.js](https://github.com/mikethedj4/Inlet/blob/gh-pages/inlet.js)
+- [Inlet.css](https://github.com/mikethedj4/Inlet/blob/gh-pages/inlet.css)
+- lib/jqueryminicolors.css
 
-All you need is the inlet.js file from src/inlet.js  
-but you do need to make sure you have all of the libs this depends on (found in the example/lib folder):
-ColorPicker  
-CodeMirror2 ( >= 3.1 )  
+Check out [index.html](https://github.com/mikethedj4/Inlet/blob/gh-pages/index.html) to see how to put things together
 
-Check out index.html to see how to put things together
+The key bit of javascript code to kick things off is:  
 
-The key bit of javascript code to kick things off is:
-```javascript
-var editor = CodeMirror('#editor', ...)
-Inlet(editor)
+    var editor = CodeMirror('#editor', ...)
+    Inlet(editor)
 
 Enjoy!

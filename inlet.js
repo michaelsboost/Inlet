@@ -1172,1850 +1172,1128 @@ else {
 
 })(Math);
 
-/**
- * jscolor - JavaScript Color Picker
+/*
+ * jQuery MiniColors: A tiny color picker built on jQuery
  *
- * @link    http://jscolor.com
- * @license For open source use: GPLv3
- *          For commercial use: JSColor Commercial License
- * @author  Jan Odvarko
- * @version 2.0.4
+ * Copyright: Cory LaViska for A Beautiful Site, LLC: http://www.abeautifulsite.net/
  *
- * See usage examples at http://jscolor.com/examples/
+ * Contribute: https://github.com/claviska/jquery-minicolors
+ *
+ * @license: http://opensource.org/licenses/MIT
+ *
  */
-
-
-"use strict";
-
-
-if (!window.jscolor) { window.jscolor = (function () {
-
-
-var jsc = {
-
-
-	register : function () {
-		jsc.attachDOMReadyEvent(jsc.init);
-		jsc.attachEvent(document, 'mousedown', jsc.onDocumentMouseDown);
-		jsc.attachEvent(document, 'touchstart', jsc.onDocumentTouchStart);
-		jsc.attachEvent(window, 'resize', jsc.onWindowResize);
-	},
-
-
-	init : function () {
-		if (jsc.jscolor.lookupClass) {
-			jsc.jscolor.installByClassName(jsc.jscolor.lookupClass);
-		}
-	},
-
-
-	tryInstallOnElements : function (elms, className) {
-		var matchClass = new RegExp('(^|\\s)(' + className + ')(\\s*(\\{[^}]*\\})|\\s|$)', 'i');
-
-		for (var i = 0; i < elms.length; i += 1) {
-			if (elms[i].type !== undefined && elms[i].type.toLowerCase() == 'color') {
-				if (jsc.isColorAttrSupported) {
-					// skip inputs of type 'color' if supported by the browser
-					continue;
-				}
-			}
-			var m;
-			if (!elms[i].jscolor && elms[i].className && (m = elms[i].className.match(matchClass))) {
-				var targetElm = elms[i];
-				var optsStr = null;
-
-				var dataOptions = jsc.getDataAttr(targetElm, 'jscolor');
-				if (dataOptions !== null) {
-					optsStr = dataOptions;
-				} else if (m[4]) {
-					optsStr = m[4];
-				}
-
-				var opts = {};
-				if (optsStr) {
-					try {
-						opts = (new Function ('return (' + optsStr + ')'))();
-					} catch(eParseError) {
-						jsc.warn('Error parsing jscolor options: ' + eParseError + ':\n' + optsStr);
-					}
-				}
-				targetElm.jscolor = new jsc.jscolor(targetElm, opts);
-			}
-		}
-	},
-
-
-	isColorAttrSupported : (function () {
-		var elm = document.createElement('input');
-		if (elm.setAttribute) {
-			elm.setAttribute('type', 'color');
-			if (elm.type.toLowerCase() == 'color') {
-				return true;
-			}
-		}
-		return false;
-	})(),
-
-
-	isCanvasSupported : (function () {
-		var elm = document.createElement('canvas');
-		return !!(elm.getContext && elm.getContext('2d'));
-	})(),
-
-
-	fetchElement : function (mixed) {
-		return typeof mixed === 'string' ? document.getElementById(mixed) : mixed;
-	},
-
-
-	isElementType : function (elm, type) {
-		return elm.nodeName.toLowerCase() === type.toLowerCase();
-	},
-
-
-	getDataAttr : function (el, name) {
-		var attrName = 'data-' + name;
-		var attrValue = el.getAttribute(attrName);
-		if (attrValue !== null) {
-			return attrValue;
-		}
-		return null;
-	},
-
-
-	attachEvent : function (el, evnt, func) {
-		if (el.addEventListener) {
-			el.addEventListener(evnt, func, false);
-		} else if (el.attachEvent) {
-			el.attachEvent('on' + evnt, func);
-		}
-	},
-
-
-	detachEvent : function (el, evnt, func) {
-		if (el.removeEventListener) {
-			el.removeEventListener(evnt, func, false);
-		} else if (el.detachEvent) {
-			el.detachEvent('on' + evnt, func);
-		}
-	},
-
-
-	_attachedGroupEvents : {},
-
-
-	attachGroupEvent : function (groupName, el, evnt, func) {
-		if (!jsc._attachedGroupEvents.hasOwnProperty(groupName)) {
-			jsc._attachedGroupEvents[groupName] = [];
-		}
-		jsc._attachedGroupEvents[groupName].push([el, evnt, func]);
-		jsc.attachEvent(el, evnt, func);
-	},
-
-
-	detachGroupEvents : function (groupName) {
-		if (jsc._attachedGroupEvents.hasOwnProperty(groupName)) {
-			for (var i = 0; i < jsc._attachedGroupEvents[groupName].length; i += 1) {
-				var evt = jsc._attachedGroupEvents[groupName][i];
-				jsc.detachEvent(evt[0], evt[1], evt[2]);
-			}
-			delete jsc._attachedGroupEvents[groupName];
-		}
-	},
-
-
-	attachDOMReadyEvent : function (func) {
-		var fired = false;
-		var fireOnce = function () {
-			if (!fired) {
-				fired = true;
-				func();
-			}
-		};
-
-		if (document.readyState === 'complete') {
-			setTimeout(fireOnce, 1); // async
-			return;
-		}
-
-		if (document.addEventListener) {
-			document.addEventListener('DOMContentLoaded', fireOnce, false);
-
-			// Fallback
-			window.addEventListener('load', fireOnce, false);
-
-		} else if (document.attachEvent) {
-			// IE
-			document.attachEvent('onreadystatechange', function () {
-				if (document.readyState === 'complete') {
-					document.detachEvent('onreadystatechange', arguments.callee);
-					fireOnce();
-				}
-			})
-
-			// Fallback
-			window.attachEvent('onload', fireOnce);
-
-			// IE7/8
-			if (document.documentElement.doScroll && window == window.top) {
-				var tryScroll = function () {
-					if (!document.body) { return; }
-					try {
-						document.documentElement.doScroll('left');
-						fireOnce();
-					} catch (e) {
-						setTimeout(tryScroll, 1);
-					}
-				};
-				tryScroll();
-			}
-		}
-	},
-
-
-	warn : function (msg) {
-		if (window.console && window.console.warn) {
-			window.console.warn(msg);
-		}
-	},
-
-
-	preventDefault : function (e) {
-		if (e.preventDefault) { e.preventDefault(); }
-		e.returnValue = false;
-	},
-
-
-	captureTarget : function (target) {
-		// IE
-		if (target.setCapture) {
-			jsc._capturedTarget = target;
-			jsc._capturedTarget.setCapture();
-		}
-	},
-
-
-	releaseTarget : function () {
-		// IE
-		if (jsc._capturedTarget) {
-			jsc._capturedTarget.releaseCapture();
-			jsc._capturedTarget = null;
-		}
-	},
-
-
-	fireEvent : function (el, evnt) {
-		if (!el) {
-			return;
-		}
-		if (document.createEvent) {
-			var ev = document.createEvent('HTMLEvents');
-			ev.initEvent(evnt, true, true);
-			el.dispatchEvent(ev);
-		} else if (document.createEventObject) {
-			var ev = document.createEventObject();
-			el.fireEvent('on' + evnt, ev);
-		} else if (el['on' + evnt]) { // alternatively use the traditional event model
-			el['on' + evnt]();
-		}
-	},
-
-
-	classNameToList : function (className) {
-		return className.replace(/^\s+|\s+$/g, '').split(/\s+/);
-	},
-
-
-	// The className parameter (str) can only contain a single class name
-	hasClass : function (elm, className) {
-		if (!className) {
-			return false;
-		}
-		return -1 != (' ' + elm.className.replace(/\s+/g, ' ') + ' ').indexOf(' ' + className + ' ');
-	},
-
-
-	// The className parameter (str) can contain multiple class names separated by whitespace
-	setClass : function (elm, className) {
-		var classList = jsc.classNameToList(className);
-		for (var i = 0; i < classList.length; i += 1) {
-			if (!jsc.hasClass(elm, classList[i])) {
-				elm.className += (elm.className ? ' ' : '') + classList[i];
-			}
-		}
-	},
-
-
-	// The className parameter (str) can contain multiple class names separated by whitespace
-	unsetClass : function (elm, className) {
-		var classList = jsc.classNameToList(className);
-		for (var i = 0; i < classList.length; i += 1) {
-			var repl = new RegExp(
-				'^\\s*' + classList[i] + '\\s*|' +
-				'\\s*' + classList[i] + '\\s*$|' +
-				'\\s+' + classList[i] + '(\\s+)',
-				'g'
-			);
-			elm.className = elm.className.replace(repl, '$1');
-		}
-	},
-
-
-	getStyle : function (elm) {
-		return window.getComputedStyle ? window.getComputedStyle(elm) : elm.currentStyle;
-	},
-
-
-	setStyle : (function () {
-		var helper = document.createElement('div');
-		var getSupportedProp = function (names) {
-			for (var i = 0; i < names.length; i += 1) {
-				if (names[i] in helper.style) {
-					return names[i];
-				}
-			}
-		};
-		var props = {
-			borderRadius: getSupportedProp(['borderRadius', 'MozBorderRadius', 'webkitBorderRadius']),
-			boxShadow: getSupportedProp(['boxShadow', 'MozBoxShadow', 'webkitBoxShadow'])
-		};
-		return function (elm, prop, value) {
-			switch (prop.toLowerCase()) {
-			case 'opacity':
-				var alphaOpacity = Math.round(parseFloat(value) * 100);
-				elm.style.opacity = value;
-				elm.style.filter = 'alpha(opacity=' + alphaOpacity + ')';
-				break;
-			default:
-				elm.style[props[prop]] = value;
-				break;
-			}
-		};
-	})(),
-
-
-	setBorderRadius : function (elm, value) {
-		jsc.setStyle(elm, 'borderRadius', value || '0');
-	},
-
-
-	setBoxShadow : function (elm, value) {
-		jsc.setStyle(elm, 'boxShadow', value || 'none');
-	},
-
-
-	getElementPos : function (e, relativeToViewport) {
-		var x=0, y=0;
-		var rect = e.getBoundingClientRect();
-		x = rect.left;
-		y = rect.top;
-		if (!relativeToViewport) {
-			var viewPos = jsc.getViewPos();
-			x += viewPos[0];
-			y += viewPos[1];
-		}
-		return [x, y];
-	},
-
-
-	getElementSize : function (e) {
-		return [e.offsetWidth, e.offsetHeight];
-	},
-
-
-	// get pointer's X/Y coordinates relative to viewport
-	getAbsPointerPos : function (e) {
-		if (!e) { e = window.event; }
-		var x = 0, y = 0;
-		if (typeof e.changedTouches !== 'undefined' && e.changedTouches.length) {
-			// touch devices
-			x = e.changedTouches[0].clientX;
-			y = e.changedTouches[0].clientY;
-		} else if (typeof e.clientX === 'number') {
-			x = e.clientX;
-			y = e.clientY;
-		}
-		return { x: x, y: y };
-	},
-
-
-	// get pointer's X/Y coordinates relative to target element
-	getRelPointerPos : function (e) {
-		if (!e) { e = window.event; }
-		var target = e.target || e.srcElement;
-		var targetRect = target.getBoundingClientRect();
-
-		var x = 0, y = 0;
-
-		var clientX = 0, clientY = 0;
-		if (typeof e.changedTouches !== 'undefined' && e.changedTouches.length) {
-			// touch devices
-			clientX = e.changedTouches[0].clientX;
-			clientY = e.changedTouches[0].clientY;
-		} else if (typeof e.clientX === 'number') {
-			clientX = e.clientX;
-			clientY = e.clientY;
-		}
-
-		x = clientX - targetRect.left;
-		y = clientY - targetRect.top;
-		return { x: x, y: y };
-	},
-
-
-	getViewPos : function () {
-		var doc = document.documentElement;
-		return [
-			(window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0),
-			(window.pageYOffset || doc.scrollTop) - (doc.clientTop || 0)
-		];
-	},
-
-
-	getViewSize : function () {
-		var doc = document.documentElement;
-		return [
-			(window.innerWidth || doc.clientWidth),
-			(window.innerHeight || doc.clientHeight),
-		];
-	},
-
-
-	redrawPosition : function () {
-
-		if (jsc.picker && jsc.picker.owner) {
-			var thisObj = jsc.picker.owner;
-
-			var tp, vp;
-
-			if (thisObj.fixed) {
-				// Fixed elements are positioned relative to viewport,
-				// therefore we can ignore the scroll offset
-				tp = jsc.getElementPos(thisObj.targetElement, true); // target pos
-				vp = [0, 0]; // view pos
-			} else {
-				tp = jsc.getElementPos(thisObj.targetElement); // target pos
-				vp = jsc.getViewPos(); // view pos
-			}
-
-			var ts = jsc.getElementSize(thisObj.targetElement); // target size
-			var vs = jsc.getViewSize(); // view size
-			var ps = jsc.getPickerOuterDims(thisObj); // picker size
-			var a, b, c;
-			switch (thisObj.position.toLowerCase()) {
-				case 'left': a=1; b=0; c=-1; break;
-				case 'right':a=1; b=0; c=1; break;
-				case 'top':  a=0; b=1; c=-1; break;
-				default:     a=0; b=1; c=1; break;
-			}
-			var l = (ts[b]+ps[b])/2;
-
-			// compute picker position
-			if (!thisObj.smartPosition) {
-				var pp = [
-					tp[a],
-					tp[b]+ts[b]-l+l*c
-				];
-			} else {
-				var pp = [
-					-vp[a]+tp[a]+ps[a] > vs[a] ?
-						(-vp[a]+tp[a]+ts[a]/2 > vs[a]/2 && tp[a]+ts[a]-ps[a] >= 0 ? tp[a]+ts[a]-ps[a] : tp[a]) :
-						tp[a],
-					-vp[b]+tp[b]+ts[b]+ps[b]-l+l*c > vs[b] ?
-						(-vp[b]+tp[b]+ts[b]/2 > vs[b]/2 && tp[b]+ts[b]-l-l*c >= 0 ? tp[b]+ts[b]-l-l*c : tp[b]+ts[b]-l+l*c) :
-						(tp[b]+ts[b]-l+l*c >= 0 ? tp[b]+ts[b]-l+l*c : tp[b]+ts[b]-l-l*c)
-				];
-			}
-
-			var x = pp[a];
-			var y = pp[b];
-			var positionValue = thisObj.fixed ? 'fixed' : 'absolute';
-			var contractShadow =
-				(pp[0] + ps[0] > tp[0] || pp[0] < tp[0] + ts[0]) &&
-				(pp[1] + ps[1] < tp[1] + ts[1]);
-
-			jsc._drawPosition(thisObj, x, y, positionValue, contractShadow);
-		}
-	},
-
-
-	_drawPosition : function (thisObj, x, y, positionValue, contractShadow) {
-		var vShadow = contractShadow ? 0 : thisObj.shadowBlur; // px
-
-		jsc.picker.wrap.style.position = positionValue;
-		jsc.picker.wrap.style.left = x + 'px';
-		jsc.picker.wrap.style.top = y + 'px';
-
-		jsc.setBoxShadow(
-			jsc.picker.boxS,
-			thisObj.shadow ?
-				new jsc.BoxShadow(0, vShadow, thisObj.shadowBlur, 0, thisObj.shadowColor) :
-				null);
-	},
-
-
-	getPickerDims : function (thisObj) {
-		var displaySlider = !!jsc.getSliderComponent(thisObj);
-		var dims = [
-			2 * thisObj.insetWidth + 2 * thisObj.padding + thisObj.width +
-				(displaySlider ? 2 * thisObj.insetWidth + jsc.getPadToSliderPadding(thisObj) + thisObj.sliderSize : 0),
-			2 * thisObj.insetWidth + 2 * thisObj.padding + thisObj.height +
-				(thisObj.closable ? 2 * thisObj.insetWidth + thisObj.padding + thisObj.buttonHeight : 0)
-		];
-		return dims;
-	},
-
-
-	getPickerOuterDims : function (thisObj) {
-		var dims = jsc.getPickerDims(thisObj);
-		return [
-			dims[0] + 2 * thisObj.borderWidth,
-			dims[1] + 2 * thisObj.borderWidth
-		];
-	},
-
-
-	getPadToSliderPadding : function (thisObj) {
-		return Math.max(thisObj.padding, 1.5 * (2 * thisObj.pointerBorderWidth + thisObj.pointerThickness));
-	},
-
-
-	getPadYComponent : function (thisObj) {
-		switch (thisObj.mode.charAt(1).toLowerCase()) {
-			case 'v': return 'v'; break;
-		}
-		return 's';
-	},
-
-
-	getSliderComponent : function (thisObj) {
-		if (thisObj.mode.length > 2) {
-			switch (thisObj.mode.charAt(2).toLowerCase()) {
-				case 's': return 's'; break;
-				case 'v': return 'v'; break;
-			}
-		}
-		return null;
-	},
-
-
-	onDocumentMouseDown : function (e) {
-		if (!e) { e = window.event; }
-		var target = e.target || e.srcElement;
-
-		if (target._jscLinkedInstance) {
-			if (target._jscLinkedInstance.showOnClick) {
-				target._jscLinkedInstance.show();
-			}
-		} else if (target._jscControlName) {
-			jsc.onControlPointerStart(e, target, target._jscControlName, 'mouse');
-		} else {
-			// Mouse is outside the picker controls -> hide the color picker!
-			if (jsc.picker && jsc.picker.owner) {
-				jsc.picker.owner.hide();
-			}
-		}
-	},
-
-
-	onDocumentTouchStart : function (e) {
-		if (!e) { e = window.event; }
-		var target = e.target || e.srcElement;
-
-		if (target._jscLinkedInstance) {
-			if (target._jscLinkedInstance.showOnClick) {
-				target._jscLinkedInstance.show();
-			}
-		} else if (target._jscControlName) {
-			jsc.onControlPointerStart(e, target, target._jscControlName, 'touch');
-		} else {
-			if (jsc.picker && jsc.picker.owner) {
-				jsc.picker.owner.hide();
-			}
-		}
-	},
-
-
-	onWindowResize : function (e) {
-		jsc.redrawPosition();
-	},
-
-
-	onParentScroll : function (e) {
-		// hide the picker when one of the parent elements is scrolled
-		if (jsc.picker && jsc.picker.owner) {
-			jsc.picker.owner.hide();
-		}
-	},
-
-
-	_pointerMoveEvent : {
-		mouse: 'mousemove',
-		touch: 'touchmove'
-	},
-	_pointerEndEvent : {
-		mouse: 'mouseup',
-		touch: 'touchend'
-	},
-
-
-	_pointerOrigin : null,
-	_capturedTarget : null,
-
-
-	onControlPointerStart : function (e, target, controlName, pointerType) {
-		var thisObj = target._jscInstance;
-
-		jsc.preventDefault(e);
-		jsc.captureTarget(target);
-
-		var registerDragEvents = function (doc, offset) {
-			jsc.attachGroupEvent('drag', doc, jsc._pointerMoveEvent[pointerType],
-				jsc.onDocumentPointerMove(e, target, controlName, pointerType, offset));
-			jsc.attachGroupEvent('drag', doc, jsc._pointerEndEvent[pointerType],
-				jsc.onDocumentPointerEnd(e, target, controlName, pointerType));
-		};
-
-		registerDragEvents(document, [0, 0]);
-
-		if (window.parent && window.frameElement) {
-			var rect = window.frameElement.getBoundingClientRect();
-			var ofs = [-rect.left, -rect.top];
-			registerDragEvents(window.parent.window.document, ofs);
-		}
-
-		var abs = jsc.getAbsPointerPos(e);
-		var rel = jsc.getRelPointerPos(e);
-		jsc._pointerOrigin = {
-			x: abs.x - rel.x,
-			y: abs.y - rel.y
-		};
-
-		switch (controlName) {
-		case 'pad':
-			// if the slider is at the bottom, move it up
-			switch (jsc.getSliderComponent(thisObj)) {
-			case 's': if (thisObj.hsv[1] === 0) { thisObj.fromHSV(null, 100, null); }; break;
-			case 'v': if (thisObj.hsv[2] === 0) { thisObj.fromHSV(null, null, 100); }; break;
-			}
-			jsc.setPad(thisObj, e, 0, 0);
-			break;
-
-		case 'sld':
-			jsc.setSld(thisObj, e, 0);
-			break;
-		}
-
-		jsc.dispatchFineChange(thisObj);
-	},
-
-
-	onDocumentPointerMove : function (e, target, controlName, pointerType, offset) {
-		return function (e) {
-			var thisObj = target._jscInstance;
-			switch (controlName) {
-			case 'pad':
-				if (!e) { e = window.event; }
-				jsc.setPad(thisObj, e, offset[0], offset[1]);
-				jsc.dispatchFineChange(thisObj);
-				break;
-
-			case 'sld':
-				if (!e) { e = window.event; }
-				jsc.setSld(thisObj, e, offset[1]);
-				jsc.dispatchFineChange(thisObj);
-				break;
-			}
-		}
-	},
-
-
-	onDocumentPointerEnd : function (e, target, controlName, pointerType) {
-		return function (e) {
-			var thisObj = target._jscInstance;
-			jsc.detachGroupEvents('drag');
-			jsc.releaseTarget();
-			// Always dispatch changes after detaching outstanding mouse handlers,
-			// in case some user interaction will occur in user's onchange callback
-			// that would intrude with current mouse events
-			jsc.dispatchChange(thisObj);
-		};
-	},
-
-
-	dispatchChange : function (thisObj) {
-		if (thisObj.valueElement) {
-			if (jsc.isElementType(thisObj.valueElement, 'input')) {
-				jsc.fireEvent(thisObj.valueElement, 'change');
-			}
-		}
-	},
-
-
-	dispatchFineChange : function (thisObj) {
-		if (thisObj.onFineChange) {
-			var callback;
-			if (typeof thisObj.onFineChange === 'string') {
-				callback = new Function (thisObj.onFineChange);
-			} else {
-				callback = thisObj.onFineChange;
-			}
-			callback.call(thisObj);
-		}
-	},
-
-
-	setPad : function (thisObj, e, ofsX, ofsY) {
-		var pointerAbs = jsc.getAbsPointerPos(e);
-		var x = ofsX + pointerAbs.x - jsc._pointerOrigin.x - thisObj.padding - thisObj.insetWidth;
-		var y = ofsY + pointerAbs.y - jsc._pointerOrigin.y - thisObj.padding - thisObj.insetWidth;
-
-		var xVal = x * (360 / (thisObj.width - 1));
-		var yVal = 100 - (y * (100 / (thisObj.height - 1)));
-
-		switch (jsc.getPadYComponent(thisObj)) {
-		case 's': thisObj.fromHSV(xVal, yVal, null, jsc.leaveSld); break;
-		case 'v': thisObj.fromHSV(xVal, null, yVal, jsc.leaveSld); break;
-		}
-	},
-
-
-	setSld : function (thisObj, e, ofsY) {
-		var pointerAbs = jsc.getAbsPointerPos(e);
-		var y = ofsY + pointerAbs.y - jsc._pointerOrigin.y - thisObj.padding - thisObj.insetWidth;
-
-		var yVal = 100 - (y * (100 / (thisObj.height - 1)));
-
-		switch (jsc.getSliderComponent(thisObj)) {
-		case 's': thisObj.fromHSV(null, yVal, null, jsc.leavePad); break;
-		case 'v': thisObj.fromHSV(null, null, yVal, jsc.leavePad); break;
-		}
-	},
-
-
-	_vmlNS : 'jsc_vml_',
-	_vmlCSS : 'jsc_vml_css_',
-	_vmlReady : false,
-
-
-	initVML : function () {
-		if (!jsc._vmlReady) {
-			// init VML namespace
-			var doc = document;
-			if (!doc.namespaces[jsc._vmlNS]) {
-				doc.namespaces.add(jsc._vmlNS, 'urn:schemas-microsoft-com:vml');
-			}
-			if (!doc.styleSheets[jsc._vmlCSS]) {
-				var tags = ['shape', 'shapetype', 'group', 'background', 'path', 'formulas', 'handles', 'fill', 'stroke', 'shadow', 'textbox', 'textpath', 'imagedata', 'line', 'polyline', 'curve', 'rect', 'roundrect', 'oval', 'arc', 'image'];
-				var ss = doc.createStyleSheet();
-				ss.owningElement.id = jsc._vmlCSS;
-				for (var i = 0; i < tags.length; i += 1) {
-					ss.addRule(jsc._vmlNS + '\\:' + tags[i], 'behavior:url(#default#VML);');
-				}
-			}
-			jsc._vmlReady = true;
-		}
-	},
-
-
-	createPalette : function () {
-
-		var paletteObj = {
-			elm: null,
-			draw: null
-		};
-
-		if (jsc.isCanvasSupported) {
-			// Canvas implementation for modern browsers
-
-			var canvas = document.createElement('canvas');
-			var ctx = canvas.getContext('2d');
-
-			var drawFunc = function (width, height, type) {
-				canvas.width = width;
-				canvas.height = height;
-
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-				var hGrad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-				hGrad.addColorStop(0 / 6, '#F00');
-				hGrad.addColorStop(1 / 6, '#FF0');
-				hGrad.addColorStop(2 / 6, '#0F0');
-				hGrad.addColorStop(3 / 6, '#0FF');
-				hGrad.addColorStop(4 / 6, '#00F');
-				hGrad.addColorStop(5 / 6, '#F0F');
-				hGrad.addColorStop(6 / 6, '#F00');
-
-				ctx.fillStyle = hGrad;
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-				var vGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-				switch (type.toLowerCase()) {
-				case 's':
-					vGrad.addColorStop(0, 'rgba(255,255,255,0)');
-					vGrad.addColorStop(1, 'rgba(255,255,255,1)');
-					break;
-				case 'v':
-					vGrad.addColorStop(0, 'rgba(0,0,0,0)');
-					vGrad.addColorStop(1, 'rgba(0,0,0,1)');
-					break;
-				}
-				ctx.fillStyle = vGrad;
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-			};
-
-			paletteObj.elm = canvas;
-			paletteObj.draw = drawFunc;
-
-		} else {
-			// VML fallback for IE 7 and 8
-
-			jsc.initVML();
-
-			var vmlContainer = document.createElement('div');
-			vmlContainer.style.position = 'relative';
-			vmlContainer.style.overflow = 'hidden';
-
-			var hGrad = document.createElement(jsc._vmlNS + ':fill');
-			hGrad.type = 'gradient';
-			hGrad.method = 'linear';
-			hGrad.angle = '90';
-			hGrad.colors = '16.67% #F0F, 33.33% #00F, 50% #0FF, 66.67% #0F0, 83.33% #FF0'
-
-			var hRect = document.createElement(jsc._vmlNS + ':rect');
-			hRect.style.position = 'absolute';
-			hRect.style.left = -1 + 'px';
-			hRect.style.top = -1 + 'px';
-			hRect.stroked = false;
-			hRect.appendChild(hGrad);
-			vmlContainer.appendChild(hRect);
-
-			var vGrad = document.createElement(jsc._vmlNS + ':fill');
-			vGrad.type = 'gradient';
-			vGrad.method = 'linear';
-			vGrad.angle = '180';
-			vGrad.opacity = '0';
-
-			var vRect = document.createElement(jsc._vmlNS + ':rect');
-			vRect.style.position = 'absolute';
-			vRect.style.left = -1 + 'px';
-			vRect.style.top = -1 + 'px';
-			vRect.stroked = false;
-			vRect.appendChild(vGrad);
-			vmlContainer.appendChild(vRect);
-
-			var drawFunc = function (width, height, type) {
-				vmlContainer.style.width = width + 'px';
-				vmlContainer.style.height = height + 'px';
-
-				hRect.style.width =
-				vRect.style.width =
-					(width + 1) + 'px';
-				hRect.style.height =
-				vRect.style.height =
-					(height + 1) + 'px';
-
-				// Colors must be specified during every redraw, otherwise IE won't display
-				// a full gradient during a subsequential redraw
-				hGrad.color = '#F00';
-				hGrad.color2 = '#F00';
-
-				switch (type.toLowerCase()) {
-				case 's':
-					vGrad.color = vGrad.color2 = '#FFF';
-					break;
-				case 'v':
-					vGrad.color = vGrad.color2 = '#000';
-					break;
-				}
-			};
-			
-			paletteObj.elm = vmlContainer;
-			paletteObj.draw = drawFunc;
-		}
-
-		return paletteObj;
-	},
-
-
-	createSliderGradient : function () {
-
-		var sliderObj = {
-			elm: null,
-			draw: null
-		};
-
-		if (jsc.isCanvasSupported) {
-			// Canvas implementation for modern browsers
-
-			var canvas = document.createElement('canvas');
-			var ctx = canvas.getContext('2d');
-
-			var drawFunc = function (width, height, color1, color2) {
-				canvas.width = width;
-				canvas.height = height;
-
-				ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-				var grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-				grad.addColorStop(0, color1);
-				grad.addColorStop(1, color2);
-
-				ctx.fillStyle = grad;
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-			};
-
-			sliderObj.elm = canvas;
-			sliderObj.draw = drawFunc;
-
-		} else {
-			// VML fallback for IE 7 and 8
-
-			jsc.initVML();
-
-			var vmlContainer = document.createElement('div');
-			vmlContainer.style.position = 'relative';
-			vmlContainer.style.overflow = 'hidden';
-
-			var grad = document.createElement(jsc._vmlNS + ':fill');
-			grad.type = 'gradient';
-			grad.method = 'linear';
-			grad.angle = '180';
-
-			var rect = document.createElement(jsc._vmlNS + ':rect');
-			rect.style.position = 'absolute';
-			rect.style.left = -1 + 'px';
-			rect.style.top = -1 + 'px';
-			rect.stroked = false;
-			rect.appendChild(grad);
-			vmlContainer.appendChild(rect);
-
-			var drawFunc = function (width, height, color1, color2) {
-				vmlContainer.style.width = width + 'px';
-				vmlContainer.style.height = height + 'px';
-
-				rect.style.width = (width + 1) + 'px';
-				rect.style.height = (height + 1) + 'px';
-
-				grad.color = color1;
-				grad.color2 = color2;
-			};
-			
-			sliderObj.elm = vmlContainer;
-			sliderObj.draw = drawFunc;
-		}
-
-		return sliderObj;
-	},
-
-
-	leaveValue : 1<<0,
-	leaveStyle : 1<<1,
-	leavePad : 1<<2,
-	leaveSld : 1<<3,
-
-
-	BoxShadow : (function () {
-		var BoxShadow = function (hShadow, vShadow, blur, spread, color, inset) {
-			this.hShadow = hShadow;
-			this.vShadow = vShadow;
-			this.blur = blur;
-			this.spread = spread;
-			this.color = color;
-			this.inset = !!inset;
-		};
-
-		BoxShadow.prototype.toString = function () {
-			var vals = [
-				Math.round(this.hShadow) + 'px',
-				Math.round(this.vShadow) + 'px',
-				Math.round(this.blur) + 'px',
-				Math.round(this.spread) + 'px',
-				this.color
-			];
-			if (this.inset) {
-				vals.push('inset');
-			}
-			return vals.join(' ');
-		};
-
-		return BoxShadow;
-	})(),
-
-
-	//
-	// Usage:
-	// var myColor = new jscolor(<targetElement> [, <options>])
-	//
-
-	jscolor : function (targetElement, options) {
-
-		// General options
-		//
-		this.value = null; // initial HEX color. To change it later, use methods fromString(), fromHSV() and fromRGB()
-		this.valueElement = targetElement; // element that will be used to display and input the color code
-		this.styleElement = targetElement; // element that will preview the picked color using CSS backgroundColor
-		this.required = true; // whether the associated text <input> can be left empty
-		this.refine = true; // whether to refine the entered color code (e.g. uppercase it and remove whitespace)
-		this.hash = false; // whether to prefix the HEX color code with # symbol
-		this.uppercase = true; // whether to uppercase the color code
-		this.onFineChange = null; // called instantly every time the color changes (value can be either a function or a string with javascript code)
-		this.activeClass = 'jscolor-active'; // class to be set to the target element when a picker window is open on it
-		this.minS = 0; // min allowed saturation (0 - 100)
-		this.maxS = 100; // max allowed saturation (0 - 100)
-		this.minV = 0; // min allowed value (brightness) (0 - 100)
-		this.maxV = 100; // max allowed value (brightness) (0 - 100)
-
-		// Accessing the picked color
-		//
-		this.hsv = [0, 0, 100]; // read-only  [0-360, 0-100, 0-100]
-		this.rgb = [255, 255, 255]; // read-only  [0-255, 0-255, 0-255]
-
-		// Color Picker options
-		//
-		this.width = 181; // width of color palette (in px)
-		this.height = 101; // height of color palette (in px)
-		this.showOnClick = true; // whether to display the color picker when user clicks on its target element
-		this.mode = 'HSV'; // HSV | HVS | HS | HV - layout of the color picker controls
-		this.position = 'bottom'; // left | right | top | bottom - position relative to the target element
-		this.smartPosition = true; // automatically change picker position when there is not enough space for it
-		this.sliderSize = 16; // px
-		this.crossSize = 8; // px
-		this.closable = false; // whether to display the Close button
-		this.closeText = 'Close';
-		this.buttonColor = '#000000'; // CSS color
-		this.buttonHeight = 18; // px
-		this.padding = 12; // px
-		this.backgroundColor = '#FFFFFF'; // CSS color
-		this.borderWidth = 1; // px
-		this.borderColor = '#BBBBBB'; // CSS color
-		this.borderRadius = 8; // px
-		this.insetWidth = 1; // px
-		this.insetColor = '#BBBBBB'; // CSS color
-		this.shadow = true; // whether to display shadow
-		this.shadowBlur = 15; // px
-		this.shadowColor = 'rgba(0,0,0,0.2)'; // CSS color
-		this.pointerColor = '#4C4C4C'; // px
-		this.pointerBorderColor = '#FFFFFF'; // px
-        this.pointerBorderWidth = 1; // px
-        this.pointerThickness = 2; // px
-		this.zIndex = 1000;
-		this.container = null; // where to append the color picker (BODY element by default)
-
-
-		for (var opt in options) {
-			if (options.hasOwnProperty(opt)) {
-				this[opt] = options[opt];
-			}
-		}
-
-
-		this.hide = function () {
-			if (isPickerOwner()) {
-				detachPicker();
-			}
-		};
-
-
-		this.show = function () {
-			drawPicker();
-		};
-
-
-		this.redraw = function () {
-			if (isPickerOwner()) {
-				drawPicker();
-			}
-		};
-
-
-		this.importColor = function () {
-			if (!this.valueElement) {
-				this.exportColor();
-			} else {
-				if (jsc.isElementType(this.valueElement, 'input')) {
-					if (!this.refine) {
-						if (!this.fromString(this.valueElement.value, jsc.leaveValue)) {
-							if (this.styleElement) {
-								this.styleElement.style.backgroundImage = this.styleElement._jscOrigStyle.backgroundImage;
-								this.styleElement.style.backgroundColor = this.styleElement._jscOrigStyle.backgroundColor;
-								this.styleElement.style.color = this.styleElement._jscOrigStyle.color;
-							}
-							this.exportColor(jsc.leaveValue | jsc.leaveStyle);
-						}
-					} else if (!this.required && /^\s*$/.test(this.valueElement.value)) {
-						this.valueElement.value = '';
-						if (this.styleElement) {
-							this.styleElement.style.backgroundImage = this.styleElement._jscOrigStyle.backgroundImage;
-							this.styleElement.style.backgroundColor = this.styleElement._jscOrigStyle.backgroundColor;
-							this.styleElement.style.color = this.styleElement._jscOrigStyle.color;
-						}
-						this.exportColor(jsc.leaveValue | jsc.leaveStyle);
-
-					} else if (this.fromString(this.valueElement.value)) {
-						// managed to import color successfully from the value -> OK, don't do anything
-					} else {
-						this.exportColor();
-					}
-				} else {
-					// not an input element -> doesn't have any value
-					this.exportColor();
-				}
-			}
-		};
-
-
-		this.exportColor = function (flags) {
-			if (!(flags & jsc.leaveValue) && this.valueElement) {
-				var value = this.toString();
-				if (this.uppercase) { value = value.toUpperCase(); }
-				if (this.hash) { value = '#' + value; }
-
-				if (jsc.isElementType(this.valueElement, 'input')) {
-					this.valueElement.value = value;
-				} else {
-					this.valueElement.innerHTML = value;
-				}
-			}
-			if (!(flags & jsc.leaveStyle)) {
-				if (this.styleElement) {
-					this.styleElement.style.backgroundImage = 'none';
-					this.styleElement.style.backgroundColor = '#' + this.toString();
-					this.styleElement.style.color = this.isLight() ? '#000' : '#FFF';
-				}
-			}
-			if (!(flags & jsc.leavePad) && isPickerOwner()) {
-				redrawPad();
-			}
-			if (!(flags & jsc.leaveSld) && isPickerOwner()) {
-				redrawSld();
-			}
-		};
-
-
-		// h: 0-360
-		// s: 0-100
-		// v: 0-100
-		//
-		this.fromHSV = function (h, s, v, flags) { // null = don't change
-			if (h !== null) {
-				if (isNaN(h)) { return false; }
-				h = Math.max(0, Math.min(360, h));
-			}
-			if (s !== null) {
-				if (isNaN(s)) { return false; }
-				s = Math.max(0, Math.min(100, this.maxS, s), this.minS);
-			}
-			if (v !== null) {
-				if (isNaN(v)) { return false; }
-				v = Math.max(0, Math.min(100, this.maxV, v), this.minV);
-			}
-
-			this.rgb = HSV_RGB(
-				h===null ? this.hsv[0] : (this.hsv[0]=h),
-				s===null ? this.hsv[1] : (this.hsv[1]=s),
-				v===null ? this.hsv[2] : (this.hsv[2]=v)
-			);
-
-			this.exportColor(flags);
-		};
-
-
-		// r: 0-255
-		// g: 0-255
-		// b: 0-255
-		//
-		this.fromRGB = function (r, g, b, flags) { // null = don't change
-			if (r !== null) {
-				if (isNaN(r)) { return false; }
-				r = Math.max(0, Math.min(255, r));
-			}
-			if (g !== null) {
-				if (isNaN(g)) { return false; }
-				g = Math.max(0, Math.min(255, g));
-			}
-			if (b !== null) {
-				if (isNaN(b)) { return false; }
-				b = Math.max(0, Math.min(255, b));
-			}
-
-			var hsv = RGB_HSV(
-				r===null ? this.rgb[0] : r,
-				g===null ? this.rgb[1] : g,
-				b===null ? this.rgb[2] : b
-			);
-			if (hsv[0] !== null) {
-				this.hsv[0] = Math.max(0, Math.min(360, hsv[0]));
-			}
-			if (hsv[2] !== 0) {
-				this.hsv[1] = hsv[1]===null ? null : Math.max(0, this.minS, Math.min(100, this.maxS, hsv[1]));
-			}
-			this.hsv[2] = hsv[2]===null ? null : Math.max(0, this.minV, Math.min(100, this.maxV, hsv[2]));
-
-			// update RGB according to final HSV, as some values might be trimmed
-			var rgb = HSV_RGB(this.hsv[0], this.hsv[1], this.hsv[2]);
-			this.rgb[0] = rgb[0];
-			this.rgb[1] = rgb[1];
-			this.rgb[2] = rgb[2];
-
-			this.exportColor(flags);
-		};
-
-
-		this.fromString = function (str, flags) {
-			var m;
-			if (m = str.match(/^\W*([0-9A-F]{3}([0-9A-F]{3})?)\W*$/i)) {
-				// HEX notation
-				//
-
-				if (m[1].length === 6) {
-					// 6-char notation
-					this.fromRGB(
-						parseInt(m[1].substr(0,2),16),
-						parseInt(m[1].substr(2,2),16),
-						parseInt(m[1].substr(4,2),16),
-						flags
-					);
-				} else {
-					// 3-char notation
-					this.fromRGB(
-						parseInt(m[1].charAt(0) + m[1].charAt(0),16),
-						parseInt(m[1].charAt(1) + m[1].charAt(1),16),
-						parseInt(m[1].charAt(2) + m[1].charAt(2),16),
-						flags
-					);
-				}
-				return true;
-
-			} else if (m = str.match(/^\W*rgba?\(([^)]*)\)\W*$/i)) {
-				var params = m[1].split(',');
-				var re = /^\s*(\d*)(\.\d+)?\s*$/;
-				var mR, mG, mB;
-				if (
-					params.length >= 3 &&
-					(mR = params[0].match(re)) &&
-					(mG = params[1].match(re)) &&
-					(mB = params[2].match(re))
-				) {
-					var r = parseFloat((mR[1] || '0') + (mR[2] || ''));
-					var g = parseFloat((mG[1] || '0') + (mG[2] || ''));
-					var b = parseFloat((mB[1] || '0') + (mB[2] || ''));
-					this.fromRGB(r, g, b, flags);
-					return true;
-				}
-			}
-			return false;
-		};
-
-
-		this.toString = function () {
-			return (
-				(0x100 | Math.round(this.rgb[0])).toString(16).substr(1) +
-				(0x100 | Math.round(this.rgb[1])).toString(16).substr(1) +
-				(0x100 | Math.round(this.rgb[2])).toString(16).substr(1)
-			);
-		};
-
-
-		this.toHEXString = function () {
-			return '#' + this.toString().toUpperCase();
-		};
-
-
-		this.toRGBString = function () {
-			return ('rgb(' +
-				Math.round(this.rgb[0]) + ',' +
-				Math.round(this.rgb[1]) + ',' +
-				Math.round(this.rgb[2]) + ')'
-			);
-		};
-
-
-		this.isLight = function () {
-			return (
-				0.213 * this.rgb[0] +
-				0.715 * this.rgb[1] +
-				0.072 * this.rgb[2] >
-				255 / 2
-			);
-		};
-
-
-		this._processParentElementsInDOM = function () {
-			if (this._linkedElementsProcessed) { return; }
-			this._linkedElementsProcessed = true;
-
-			var elm = this.targetElement;
-			do {
-				// If the target element or one of its parent nodes has fixed position,
-				// then use fixed positioning instead
-				//
-				// Note: In Firefox, getComputedStyle returns null in a hidden iframe,
-				// that's why we need to check if the returned style object is non-empty
-				var currStyle = jsc.getStyle(elm);
-				if (currStyle && currStyle.position.toLowerCase() === 'fixed') {
-					this.fixed = true;
-				}
-
-				if (elm !== this.targetElement) {
-					// Ensure to attach onParentScroll only once to each parent element
-					// (multiple targetElements can share the same parent nodes)
-					//
-					// Note: It's not just offsetParents that can be scrollable,
-					// that's why we loop through all parent nodes
-					if (!elm._jscEventsAttached) {
-						jsc.attachEvent(elm, 'scroll', jsc.onParentScroll);
-						elm._jscEventsAttached = true;
-					}
-				}
-			} while ((elm = elm.parentNode) && !jsc.isElementType(elm, 'body'));
-		};
-
-
-		// r: 0-255
-		// g: 0-255
-		// b: 0-255
-		//
-		// returns: [ 0-360, 0-100, 0-100 ]
-		//
-		function RGB_HSV (r, g, b) {
-			r /= 255;
-			g /= 255;
-			b /= 255;
-			var n = Math.min(Math.min(r,g),b);
-			var v = Math.max(Math.max(r,g),b);
-			var m = v - n;
-			if (m === 0) { return [ null, 0, 100 * v ]; }
-			var h = r===n ? 3+(b-g)/m : (g===n ? 5+(r-b)/m : 1+(g-r)/m);
-			return [
-				60 * (h===6?0:h),
-				100 * (m/v),
-				100 * v
-			];
-		}
-
-
-		// h: 0-360
-		// s: 0-100
-		// v: 0-100
-		//
-		// returns: [ 0-255, 0-255, 0-255 ]
-		//
-		function HSV_RGB (h, s, v) {
-			var u = 255 * (v / 100);
-
-			if (h === null) {
-				return [ u, u, u ];
-			}
-
-			h /= 60;
-			s /= 100;
-
-			var i = Math.floor(h);
-			var f = i%2 ? h-i : 1-(h-i);
-			var m = u * (1 - s);
-			var n = u * (1 - s * f);
-			switch (i) {
-				case 6:
-				case 0: return [u,n,m];
-				case 1: return [n,u,m];
-				case 2: return [m,u,n];
-				case 3: return [m,n,u];
-				case 4: return [n,m,u];
-				case 5: return [u,m,n];
-			}
-		}
-
-
-		function detachPicker () {
-			jsc.unsetClass(THIS.targetElement, THIS.activeClass);
-			jsc.picker.wrap.parentNode.removeChild(jsc.picker.wrap);
-			delete jsc.picker.owner;
-		}
-
-
-		function drawPicker () {
-
-			// At this point, when drawing the picker, we know what the parent elements are
-			// and we can do all related DOM operations, such as registering events on them
-			// or checking their positioning
-			THIS._processParentElementsInDOM();
-
-			if (!jsc.picker) {
-				jsc.picker = {
-					owner: null,
-					wrap : document.createElement('div'),
-					box : document.createElement('div'),
-					boxS : document.createElement('div'), // shadow area
-					boxB : document.createElement('div'), // border
-					pad : document.createElement('div'),
-					padB : document.createElement('div'), // border
-					padM : document.createElement('div'), // mouse/touch area
-					padPal : jsc.createPalette(),
-					cross : document.createElement('div'),
-					crossBY : document.createElement('div'), // border Y
-					crossBX : document.createElement('div'), // border X
-					crossLY : document.createElement('div'), // line Y
-					crossLX : document.createElement('div'), // line X
-					sld : document.createElement('div'),
-					sldB : document.createElement('div'), // border
-					sldM : document.createElement('div'), // mouse/touch area
-					sldGrad : jsc.createSliderGradient(),
-					sldPtrS : document.createElement('div'), // slider pointer spacer
-					sldPtrIB : document.createElement('div'), // slider pointer inner border
-					sldPtrMB : document.createElement('div'), // slider pointer middle border
-					sldPtrOB : document.createElement('div'), // slider pointer outer border
-					btn : document.createElement('div'),
-					btnT : document.createElement('span') // text
-				};
-
-				jsc.picker.pad.appendChild(jsc.picker.padPal.elm);
-				jsc.picker.padB.appendChild(jsc.picker.pad);
-				jsc.picker.cross.appendChild(jsc.picker.crossBY);
-				jsc.picker.cross.appendChild(jsc.picker.crossBX);
-				jsc.picker.cross.appendChild(jsc.picker.crossLY);
-				jsc.picker.cross.appendChild(jsc.picker.crossLX);
-				jsc.picker.padB.appendChild(jsc.picker.cross);
-				jsc.picker.box.appendChild(jsc.picker.padB);
-				jsc.picker.box.appendChild(jsc.picker.padM);
-
-				jsc.picker.sld.appendChild(jsc.picker.sldGrad.elm);
-				jsc.picker.sldB.appendChild(jsc.picker.sld);
-				jsc.picker.sldB.appendChild(jsc.picker.sldPtrOB);
-				jsc.picker.sldPtrOB.appendChild(jsc.picker.sldPtrMB);
-				jsc.picker.sldPtrMB.appendChild(jsc.picker.sldPtrIB);
-				jsc.picker.sldPtrIB.appendChild(jsc.picker.sldPtrS);
-				jsc.picker.box.appendChild(jsc.picker.sldB);
-				jsc.picker.box.appendChild(jsc.picker.sldM);
-
-				jsc.picker.btn.appendChild(jsc.picker.btnT);
-				jsc.picker.box.appendChild(jsc.picker.btn);
-
-				jsc.picker.boxB.appendChild(jsc.picker.box);
-				jsc.picker.wrap.appendChild(jsc.picker.boxS);
-				jsc.picker.wrap.appendChild(jsc.picker.boxB);
-			}
-
-			var p = jsc.picker;
-
-			var displaySlider = !!jsc.getSliderComponent(THIS);
-			var dims = jsc.getPickerDims(THIS);
-			var crossOuterSize = (2 * THIS.pointerBorderWidth + THIS.pointerThickness + 2 * THIS.crossSize);
-			var padToSliderPadding = jsc.getPadToSliderPadding(THIS);
-			var borderRadius = Math.min(
-				THIS.borderRadius,
-				Math.round(THIS.padding * Math.PI)); // px
-			var padCursor = 'crosshair';
-
-			// wrap
-			p.wrap.style.clear = 'both';
-			p.wrap.style.width = (dims[0] + 2 * THIS.borderWidth) + 'px';
-			p.wrap.style.height = (dims[1] + 2 * THIS.borderWidth) + 'px';
-			p.wrap.style.zIndex = THIS.zIndex;
-
-			// picker
-			p.box.style.width = dims[0] + 'px';
-			p.box.style.height = dims[1] + 'px';
-
-			p.boxS.style.position = 'absolute';
-			p.boxS.style.left = '0';
-			p.boxS.style.top = '0';
-			p.boxS.style.width = '100%';
-			p.boxS.style.height = '100%';
-			jsc.setBorderRadius(p.boxS, borderRadius + 'px');
-
-			// picker border
-			p.boxB.style.position = 'relative';
-			p.boxB.style.border = THIS.borderWidth + 'px solid';
-			p.boxB.style.borderColor = THIS.borderColor;
-			p.boxB.style.background = THIS.backgroundColor;
-			jsc.setBorderRadius(p.boxB, borderRadius + 'px');
-
-			// IE hack:
-			// If the element is transparent, IE will trigger the event on the elements under it,
-			// e.g. on Canvas or on elements with border
-			p.padM.style.background =
-			p.sldM.style.background =
-				'#FFF';
-			jsc.setStyle(p.padM, 'opacity', '0');
-			jsc.setStyle(p.sldM, 'opacity', '0');
-
-			// pad
-			p.pad.style.position = 'relative';
-			p.pad.style.width = THIS.width + 'px';
-			p.pad.style.height = THIS.height + 'px';
-
-			// pad palettes (HSV and HVS)
-			p.padPal.draw(THIS.width, THIS.height, jsc.getPadYComponent(THIS));
-
-			// pad border
-			p.padB.style.position = 'absolute';
-			p.padB.style.left = THIS.padding + 'px';
-			p.padB.style.top = THIS.padding + 'px';
-			p.padB.style.border = THIS.insetWidth + 'px solid';
-			p.padB.style.borderColor = THIS.insetColor;
-
-			// pad mouse area
-			p.padM._jscInstance = THIS;
-			p.padM._jscControlName = 'pad';
-			p.padM.style.position = 'absolute';
-			p.padM.style.left = '0';
-			p.padM.style.top = '0';
-			p.padM.style.width = (THIS.padding + 2 * THIS.insetWidth + THIS.width + padToSliderPadding / 2) + 'px';
-			p.padM.style.height = dims[1] + 'px';
-			p.padM.style.cursor = padCursor;
-
-			// pad cross
-			p.cross.style.position = 'absolute';
-			p.cross.style.left =
-			p.cross.style.top =
-				'0';
-			p.cross.style.width =
-			p.cross.style.height =
-				crossOuterSize + 'px';
-
-			// pad cross border Y and X
-			p.crossBY.style.position =
-			p.crossBX.style.position =
-				'absolute';
-			p.crossBY.style.background =
-			p.crossBX.style.background =
-				THIS.pointerBorderColor;
-			p.crossBY.style.width =
-			p.crossBX.style.height =
-				(2 * THIS.pointerBorderWidth + THIS.pointerThickness) + 'px';
-			p.crossBY.style.height =
-			p.crossBX.style.width =
-				crossOuterSize + 'px';
-			p.crossBY.style.left =
-			p.crossBX.style.top =
-				(Math.floor(crossOuterSize / 2) - Math.floor(THIS.pointerThickness / 2) - THIS.pointerBorderWidth) + 'px';
-			p.crossBY.style.top =
-			p.crossBX.style.left =
-				'0';
-
-			// pad cross line Y and X
-			p.crossLY.style.position =
-			p.crossLX.style.position =
-				'absolute';
-			p.crossLY.style.background =
-			p.crossLX.style.background =
-				THIS.pointerColor;
-			p.crossLY.style.height =
-			p.crossLX.style.width =
-				(crossOuterSize - 2 * THIS.pointerBorderWidth) + 'px';
-			p.crossLY.style.width =
-			p.crossLX.style.height =
-				THIS.pointerThickness + 'px';
-			p.crossLY.style.left =
-			p.crossLX.style.top =
-				(Math.floor(crossOuterSize / 2) - Math.floor(THIS.pointerThickness / 2)) + 'px';
-			p.crossLY.style.top =
-			p.crossLX.style.left =
-				THIS.pointerBorderWidth + 'px';
-
-			// slider
-			p.sld.style.overflow = 'hidden';
-			p.sld.style.width = THIS.sliderSize + 'px';
-			p.sld.style.height = THIS.height + 'px';
-
-			// slider gradient
-			p.sldGrad.draw(THIS.sliderSize, THIS.height, '#000', '#000');
-
-			// slider border
-			p.sldB.style.display = displaySlider ? 'block' : 'none';
-			p.sldB.style.position = 'absolute';
-			p.sldB.style.right = THIS.padding + 'px';
-			p.sldB.style.top = THIS.padding + 'px';
-			p.sldB.style.border = THIS.insetWidth + 'px solid';
-			p.sldB.style.borderColor = THIS.insetColor;
-
-			// slider mouse area
-			p.sldM._jscInstance = THIS;
-			p.sldM._jscControlName = 'sld';
-			p.sldM.style.display = displaySlider ? 'block' : 'none';
-			p.sldM.style.position = 'absolute';
-			p.sldM.style.right = '0';
-			p.sldM.style.top = '0';
-			p.sldM.style.width = (THIS.sliderSize + padToSliderPadding / 2 + THIS.padding + 2 * THIS.insetWidth) + 'px';
-			p.sldM.style.height = dims[1] + 'px';
-			p.sldM.style.cursor = 'default';
-
-			// slider pointer inner and outer border
-			p.sldPtrIB.style.border =
-			p.sldPtrOB.style.border =
-				THIS.pointerBorderWidth + 'px solid ' + THIS.pointerBorderColor;
-
-			// slider pointer outer border
-			p.sldPtrOB.style.position = 'absolute';
-			p.sldPtrOB.style.left = -(2 * THIS.pointerBorderWidth + THIS.pointerThickness) + 'px';
-			p.sldPtrOB.style.top = '0';
-
-			// slider pointer middle border
-			p.sldPtrMB.style.border = THIS.pointerThickness + 'px solid ' + THIS.pointerColor;
-
-			// slider pointer spacer
-			p.sldPtrS.style.width = THIS.sliderSize + 'px';
-			p.sldPtrS.style.height = sliderPtrSpace + 'px';
-
-			// the Close button
-			function setBtnBorder () {
-				var insetColors = THIS.insetColor.split(/\s+/);
-				var outsetColor = insetColors.length < 2 ? insetColors[0] : insetColors[1] + ' ' + insetColors[0] + ' ' + insetColors[0] + ' ' + insetColors[1];
-				p.btn.style.borderColor = outsetColor;
-			}
-			p.btn.style.display = THIS.closable ? 'block' : 'none';
-			p.btn.style.position = 'absolute';
-			p.btn.style.left = THIS.padding + 'px';
-			p.btn.style.bottom = THIS.padding + 'px';
-			p.btn.style.padding = '0 15px';
-			p.btn.style.height = THIS.buttonHeight + 'px';
-			p.btn.style.border = THIS.insetWidth + 'px solid';
-			setBtnBorder();
-			p.btn.style.color = THIS.buttonColor;
-			p.btn.style.font = '12px sans-serif';
-			p.btn.style.textAlign = 'center';
-			try {
-				p.btn.style.cursor = 'pointer';
-			} catch(eOldIE) {
-				p.btn.style.cursor = 'hand';
-			}
-			p.btn.onmousedown = function () {
-				THIS.hide();
-			};
-			p.btnT.style.lineHeight = THIS.buttonHeight + 'px';
-			p.btnT.innerHTML = '';
-			p.btnT.appendChild(document.createTextNode(THIS.closeText));
-
-			// place pointers
-			redrawPad();
-			redrawSld();
-
-			// If we are changing the owner without first closing the picker,
-			// make sure to first deal with the old owner
-			if (jsc.picker.owner && jsc.picker.owner !== THIS) {
-				jsc.unsetClass(jsc.picker.owner.targetElement, THIS.activeClass);
-			}
-
-			// Set the new picker owner
-			jsc.picker.owner = THIS;
-
-			// The redrawPosition() method needs picker.owner to be set, that's why we call it here,
-			// after setting the owner
-			if (jsc.isElementType(container, 'body')) {
-				jsc.redrawPosition();
-			} else {
-				jsc._drawPosition(THIS, 0, 0, 'relative', false);
-			}
-
-			if (p.wrap.parentNode != container) {
-				container.appendChild(p.wrap);
-			}
-
-			jsc.setClass(THIS.targetElement, THIS.activeClass);
-		}
-
-
-		function redrawPad () {
-			// redraw the pad pointer
-			switch (jsc.getPadYComponent(THIS)) {
-			case 's': var yComponent = 1; break;
-			case 'v': var yComponent = 2; break;
-			}
-			var x = Math.round((THIS.hsv[0] / 360) * (THIS.width - 1));
-			var y = Math.round((1 - THIS.hsv[yComponent] / 100) * (THIS.height - 1));
-			var crossOuterSize = (2 * THIS.pointerBorderWidth + THIS.pointerThickness + 2 * THIS.crossSize);
-			var ofs = -Math.floor(crossOuterSize / 2);
-			jsc.picker.cross.style.left = (x + ofs) + 'px';
-			jsc.picker.cross.style.top = (y + ofs) + 'px';
-
-			// redraw the slider
-			switch (jsc.getSliderComponent(THIS)) {
-			case 's':
-				var rgb1 = HSV_RGB(THIS.hsv[0], 100, THIS.hsv[2]);
-				var rgb2 = HSV_RGB(THIS.hsv[0], 0, THIS.hsv[2]);
-				var color1 = 'rgb(' +
-					Math.round(rgb1[0]) + ',' +
-					Math.round(rgb1[1]) + ',' +
-					Math.round(rgb1[2]) + ')';
-				var color2 = 'rgb(' +
-					Math.round(rgb2[0]) + ',' +
-					Math.round(rgb2[1]) + ',' +
-					Math.round(rgb2[2]) + ')';
-				jsc.picker.sldGrad.draw(THIS.sliderSize, THIS.height, color1, color2);
-				break;
-			case 'v':
-				var rgb = HSV_RGB(THIS.hsv[0], THIS.hsv[1], 100);
-				var color1 = 'rgb(' +
-					Math.round(rgb[0]) + ',' +
-					Math.round(rgb[1]) + ',' +
-					Math.round(rgb[2]) + ')';
-				var color2 = '#000';
-				jsc.picker.sldGrad.draw(THIS.sliderSize, THIS.height, color1, color2);
-				break;
-			}
-		}
-
-
-		function redrawSld () {
-			var sldComponent = jsc.getSliderComponent(THIS);
-			if (sldComponent) {
-				// redraw the slider pointer
-				switch (sldComponent) {
-				case 's': var yComponent = 1; break;
-				case 'v': var yComponent = 2; break;
-				}
-				var y = Math.round((1 - THIS.hsv[yComponent] / 100) * (THIS.height - 1));
-				jsc.picker.sldPtrOB.style.top = (y - (2 * THIS.pointerBorderWidth + THIS.pointerThickness) - Math.floor(sliderPtrSpace / 2)) + 'px';
-			}
-		}
-
-
-		function isPickerOwner () {
-			return jsc.picker && jsc.picker.owner === THIS;
-		}
-
-
-		function blurValue () {
-			THIS.importColor();
-		}
-
-
-		// Find the target element
-		if (typeof targetElement === 'string') {
-			var id = targetElement;
-			var elm = document.getElementById(id);
-			if (elm) {
-				this.targetElement = elm;
-			} else {
-				jsc.warn('Could not find target element with ID \'' + id + '\'');
-			}
-		} else if (targetElement) {
-			this.targetElement = targetElement;
-		} else {
-			jsc.warn('Invalid target element: \'' + targetElement + '\'');
-		}
-
-		if (this.targetElement._jscLinkedInstance) {
-			jsc.warn('Cannot link jscolor twice to the same element. Skipping.');
-			return;
-		}
-		this.targetElement._jscLinkedInstance = this;
-
-		// Find the value element
-		this.valueElement = jsc.fetchElement(this.valueElement);
-		// Find the style element
-		this.styleElement = jsc.fetchElement(this.styleElement);
-
-		var THIS = this;
-		var container =
-			this.container ?
-			jsc.fetchElement(this.container) :
-			document.getElementsByTagName('body')[0];
-		var sliderPtrSpace = 3; // px
-
-		// For BUTTON elements it's important to stop them from sending the form when clicked
-		// (e.g. in Safari)
-		if (jsc.isElementType(this.targetElement, 'button')) {
-			if (this.targetElement.onclick) {
-				var origCallback = this.targetElement.onclick;
-				this.targetElement.onclick = function (evt) {
-					origCallback.call(this, evt);
-					return false;
-				};
-			} else {
-				this.targetElement.onclick = function () { return false; };
-			}
-		}
-
-		/*
-		var elm = this.targetElement;
-		do {
-			// If the target element or one of its offsetParents has fixed position,
-			// then use fixed positioning instead
-			//
-			// Note: In Firefox, getComputedStyle returns null in a hidden iframe,
-			// that's why we need to check if the returned style object is non-empty
-			var currStyle = jsc.getStyle(elm);
-			if (currStyle && currStyle.position.toLowerCase() === 'fixed') {
-				this.fixed = true;
-			}
-
-			if (elm !== this.targetElement) {
-				// attach onParentScroll so that we can recompute the picker position
-				// when one of the offsetParents is scrolled
-				if (!elm._jscEventsAttached) {
-					jsc.attachEvent(elm, 'scroll', jsc.onParentScroll);
-					elm._jscEventsAttached = true;
-				}
-			}
-		} while ((elm = elm.offsetParent) && !jsc.isElementType(elm, 'body'));
-		*/
-
-		// valueElement
-		if (this.valueElement) {
-			if (jsc.isElementType(this.valueElement, 'input')) {
-				var updateField = function () {
-					THIS.fromString(THIS.valueElement.value, jsc.leaveValue);
-					jsc.dispatchFineChange(THIS);
-				};
-				jsc.attachEvent(this.valueElement, 'keyup', updateField);
-				jsc.attachEvent(this.valueElement, 'input', updateField);
-				jsc.attachEvent(this.valueElement, 'blur', blurValue);
-				this.valueElement.setAttribute('autocomplete', 'off');
-			}
-		}
-
-		// styleElement
-		if (this.styleElement) {
-			this.styleElement._jscOrigStyle = {
-				backgroundImage : this.styleElement.style.backgroundImage,
-				backgroundColor : this.styleElement.style.backgroundColor,
-				color : this.styleElement.style.color
-			};
-		}
-
-		if (this.value) {
-			// Try to set the color from the .value option and if unsuccessful,
-			// export the current color
-			this.fromString(this.value) || this.exportColor();
-		} else {
-			this.importColor();
-		}
-	}
-
-};
-
-
-//================================
-// Public properties and methods
-//================================
-
-
-// By default, search for all elements with class="jscolor" and install a color picker on them.
-//
-// You can change what class name will be looked for by setting the property jscolor.lookupClass
-// anywhere in your HTML document. To completely disable the automatic lookup, set it to null.
-//
-jsc.jscolor.lookupClass = 'jscolor';
-
-
-jsc.jscolor.installByClassName = function (className) {
-	var inputElms = document.getElementsByTagName('input');
-	var buttonElms = document.getElementsByTagName('button');
-
-	jsc.tryInstallOnElements(inputElms, className);
-	jsc.tryInstallOnElements(buttonElms, className);
-};
-
-
-jsc.register();
-
-
-return jsc.jscolor;
-
-
-})(); }
+(function ($) {
+
+    'use strict';
+
+    // Defaults
+    $.minicolors = {
+        defaults: {
+            animationSpeed: 50,
+            animationEasing: 'swing',
+            change: null,
+            changeDelay: 0,
+            control: 'hue',
+            dataUris: true,
+            defaultValue: '',
+            format: 'hex',
+            hide: null,
+            hideSpeed: 100,
+            inline: false,
+            keywords: '',
+            letterCase: 'lowercase',
+            opacity: false,
+            position: 'bottom left',
+            show: null,
+            showSpeed: 100,
+            theme: 'default',
+            swatches: []
+        }
+    };
+
+    // Public methods
+    $.extend($.fn, {
+        minicolors: function(method, data) {
+
+            switch(method) {
+
+                // Destroy the control
+                case 'destroy':
+                    $(this).each( function() {
+                        destroy($(this));
+                    });
+                    return $(this);
+
+                // Hide the color picker
+                case 'hide':
+                    hide();
+                    return $(this);
+
+                // Get/set opacity
+                case 'opacity':
+                    // Getter
+                    if( data === undefined ) {
+                        // Getter
+                        return $(this).attr('data-opacity');
+                    } else {
+                        // Setter
+                        $(this).each( function() {
+                            updateFromInput($(this).attr('data-opacity', data));
+                        });
+                    }
+                    return $(this);
+
+                // Get an RGB(A) object based on the current color/opacity
+                case 'rgbObject':
+                    return rgbObject($(this), method === 'rgbaObject');
+
+                // Get an RGB(A) string based on the current color/opacity
+                case 'rgbString':
+                case 'rgbaString':
+                    return rgbString($(this), method === 'rgbaString');
+
+                // Get/set settings on the fly
+                case 'settings':
+                    if( data === undefined ) {
+                        return $(this).data('minicolors-settings');
+                    } else {
+                        // Setter
+                        $(this).each( function() {
+                            var settings = $(this).data('minicolors-settings') || {};
+                            destroy($(this));
+                            $(this).minicolors($.extend(true, settings, data));
+                        });
+                    }
+                    return $(this);
+
+                // Show the color picker
+                case 'show':
+                    show( $(this).eq(0) );
+                    return $(this);
+
+                // Get/set the hex color value
+                case 'value':
+                    if( data === undefined ) {
+                        // Getter
+                        return $(this).val();
+                    } else {
+                        // Setter
+                        $(this).each( function() {
+                            if( typeof(data) === 'object' ) {
+                                if( data.opacity ) {
+                                    $(this).attr('data-opacity', keepWithin(data.opacity, 0, 1));
+                                }
+                                if( data.color ) {
+                                    $(this).val(data.color);
+                                }
+                            } else {
+                                $(this).val(data);
+                            }
+                            updateFromInput($(this));
+                        });
+                    }
+                    return $(this);
+
+                // Initializes the control
+                default:
+                    if( method !== 'create' ) data = method;
+                    $(this).each( function() {
+                        init($(this), data);
+                    });
+                    return $(this);
+
+            }
+
+        }
+    });
+
+    // Initialize input elements
+    function init(input, settings) {
+
+        var minicolors = $('<div class="minicolors" />'),
+            defaults = $.minicolors.defaults,
+            size,
+            swatches,
+            swatch,
+            panel,
+            i;
+
+        // Do nothing if already initialized
+        if( input.data('minicolors-initialized') ) return;
+
+        // Handle settings
+        settings = $.extend(true, {}, defaults, settings);
+
+        // The wrapper
+        minicolors
+            .addClass('minicolors-theme-' + settings.theme)
+            .toggleClass('minicolors-with-opacity', settings.opacity)
+            .toggleClass('minicolors-no-data-uris', settings.dataUris !== true);
+
+        // Custom positioning
+        if( settings.position !== undefined ) {
+            $.each(settings.position.split(' '), function() {
+                minicolors.addClass('minicolors-position-' + this);
+            });
+        }
+
+        // Input size
+        if( settings.format === 'rgb' ) {
+            size = settings.opacity ? '25' : '20';
+        } else {
+            size = settings.keywords ? '11' : '7';
+        }
+
+        // The input
+        input
+            .addClass('minicolors-input')
+            .data('minicolors-initialized', false)
+            .data('minicolors-settings', settings)
+            .prop('size', size)
+            .wrap(minicolors)
+            .after(
+                '<div class="minicolors-panel minicolors-slider-' + settings.control + '">' +
+                    '<div class="minicolors-slider minicolors-sprite">' +
+                        '<div class="minicolors-picker"></div>' +
+                    '</div>' +
+                    '<div class="minicolors-opacity-slider minicolors-sprite">' +
+                        '<div class="minicolors-picker"></div>' +
+                    '</div>' +
+                    '<div class="minicolors-grid minicolors-sprite">' +
+                        '<div class="minicolors-grid-inner"></div>' +
+                        '<div class="minicolors-picker"><div></div></div>' +
+                    '</div>' +
+                '</div>'
+            );
+        
+        // The swatch
+        if( !settings.inline ) {
+            input.after('<span class="minicolors-swatch minicolors-sprite minicolors-input-swatch"><span class="minicolors-swatch-color"></span></span>');
+            input.next('.minicolors-input-swatch').on('click', function(event) {
+                event.preventDefault();
+                input.focus();
+            });
+        }
+
+        // Prevent text selection in IE
+        panel = input.parent().find('.minicolors-panel');
+        panel.on('selectstart', function() { return false; }).end();
+        
+        // Swatches
+        if (settings.swatches && settings.swatches.length !== 0) {
+            if (settings.swatches.length > 7) {
+                settings.swatches.length = 7;
+            }
+            panel.addClass('minicolors-with-swatches');
+            swatches = $('<ul class="minicolors-swatches"></ul>')
+                .appendTo(panel);
+            for(i = 0; i < settings.swatches.length; ++i) {
+                swatch = settings.swatches[i];
+                swatch = isRgb(swatch) ? parseRgb(swatch, true) : hex2rgb(parseHex(swatch, true));
+                $('<li class="minicolors-swatch minicolors-sprite"><span class="minicolors-swatch-color"></span></li>')
+                    .appendTo(swatches)
+                    .data('swatch-color', settings.swatches[i])
+                    .find('.minicolors-swatch-color')
+                    .css({
+                        backgroundColor: rgb2hex(swatch),
+                        opacity: swatch.a
+                    });
+                settings.swatches[i] = swatch;
+            }
+                
+        }
+
+        // Inline controls
+        if( settings.inline ) input.parent().addClass('minicolors-inline');
+
+        updateFromInput(input, false);
+
+        input.data('minicolors-initialized', true);
+
+    }
+
+    // Returns the input back to its original state
+    function destroy(input) {
+
+        var minicolors = input.parent();
+
+        // Revert the input element
+        input
+            .removeData('minicolors-initialized')
+            .removeData('minicolors-settings')
+            .removeProp('size')
+            .removeClass('minicolors-input');
+
+        // Remove the wrap and destroy whatever remains
+        minicolors.before(input).remove();
+
+    }
+
+    // Shows the specified dropdown panel
+    function show(input) {
+
+        var minicolors = input.parent(),
+            panel = minicolors.find('.minicolors-panel'),
+            settings = input.data('minicolors-settings');
+
+        // Do nothing if uninitialized, disabled, inline, or already open
+        if( !input.data('minicolors-initialized') ||
+            input.prop('disabled') ||
+            minicolors.hasClass('minicolors-inline') ||
+            minicolors.hasClass('minicolors-focus')
+        ) return;
+
+        hide();
+
+        minicolors.addClass('minicolors-focus');
+        panel
+            .stop(true, true)
+            .fadeIn(settings.showSpeed, function() {
+                if( settings.show ) settings.show.call(input.get(0));
+            });
+
+    }
+
+    // Hides all dropdown panels
+    function hide() {
+
+        $('.minicolors-focus').each( function() {
+
+            var minicolors = $(this),
+                input = minicolors.find('.minicolors-input'),
+                panel = minicolors.find('.minicolors-panel'),
+                settings = input.data('minicolors-settings');
+
+            panel.fadeOut(settings.hideSpeed, function() {
+                if( settings.hide ) settings.hide.call(input.get(0));
+                minicolors.removeClass('minicolors-focus');
+            });
+
+        });
+    }
+
+    // Moves the selected picker
+    function move(target, event, animate) {
+
+        var input = target.parents('.minicolors').find('.minicolors-input'),
+            settings = input.data('minicolors-settings'),
+            picker = target.find('[class$=-picker]'),
+            offsetX = target.offset().left,
+            offsetY = target.offset().top,
+            x = Math.round(event.pageX - offsetX),
+            y = Math.round(event.pageY - offsetY),
+            duration = animate ? settings.animationSpeed : 0,
+            wx, wy, r, phi;
+
+        // Touch support
+        if( event.originalEvent.changedTouches ) {
+            x = event.originalEvent.changedTouches[0].pageX - offsetX;
+            y = event.originalEvent.changedTouches[0].pageY - offsetY;
+        }
+
+        // Constrain picker to its container
+        if( x < 0 ) x = 0;
+        if( y < 0 ) y = 0;
+        if( x > target.width() ) x = target.width();
+        if( y > target.height() ) y = target.height();
+
+        // Constrain color wheel values to the wheel
+        if( target.parent().is('.minicolors-slider-wheel') && picker.parent().is('.minicolors-grid') ) {
+            wx = 75 - x;
+            wy = 75 - y;
+            r = Math.sqrt(wx * wx + wy * wy);
+            phi = Math.atan2(wy, wx);
+            if( phi < 0 ) phi += Math.PI * 2;
+            if( r > 75 ) {
+                r = 75;
+                x = 75 - (75 * Math.cos(phi));
+                y = 75 - (75 * Math.sin(phi));
+            }
+            x = Math.round(x);
+            y = Math.round(y);
+        }
+
+        // Move the picker
+        if( target.is('.minicolors-grid') ) {
+            picker
+                .stop(true)
+                .animate({
+                    top: y + 'px',
+                    left: x + 'px'
+                }, duration, settings.animationEasing, function() {
+                    updateFromControl(input, target);
+                });
+        } else {
+            picker
+                .stop(true)
+                .animate({
+                    top: y + 'px'
+                }, duration, settings.animationEasing, function() {
+                    updateFromControl(input, target);
+                });
+        }
+
+    }
+
+    // Sets the input based on the color picker values
+    function updateFromControl(input, target) {
+
+        function getCoords(picker, container) {
+
+            var left, top;
+            if( !picker.length || !container ) return null;
+            left = picker.offset().left;
+            top = picker.offset().top;
+
+            return {
+                x: left - container.offset().left + (picker.outerWidth() / 2),
+                y: top - container.offset().top + (picker.outerHeight() / 2)
+            };
+
+        }
+
+        var hue, saturation, brightness, x, y, r, phi,
+
+            hex = input.val(),
+            opacity = input.attr('data-opacity'),
+
+            // Helpful references
+            minicolors = input.parent(),
+            settings = input.data('minicolors-settings'),
+            swatch = minicolors.find('.minicolors-input-swatch'),
+
+            // Panel objects
+            grid = minicolors.find('.minicolors-grid'),
+            slider = minicolors.find('.minicolors-slider'),
+            opacitySlider = minicolors.find('.minicolors-opacity-slider'),
+
+            // Picker objects
+            gridPicker = grid.find('[class$=-picker]'),
+            sliderPicker = slider.find('[class$=-picker]'),
+            opacityPicker = opacitySlider.find('[class$=-picker]'),
+
+            // Picker positions
+            gridPos = getCoords(gridPicker, grid),
+            sliderPos = getCoords(sliderPicker, slider),
+            opacityPos = getCoords(opacityPicker, opacitySlider);
+
+        // Handle colors
+        if( target.is('.minicolors-grid, .minicolors-slider, .minicolors-opacity-slider') ) {
+
+            // Determine HSB values
+            switch(settings.control) {
+
+                case 'wheel':
+                    // Calculate hue, saturation, and brightness
+                    x = (grid.width() / 2) - gridPos.x;
+                    y = (grid.height() / 2) - gridPos.y;
+                    r = Math.sqrt(x * x + y * y);
+                    phi = Math.atan2(y, x);
+                    if( phi < 0 ) phi += Math.PI * 2;
+                    if( r > 75 ) {
+                        r = 75;
+                        gridPos.x = 69 - (75 * Math.cos(phi));
+                        gridPos.y = 69 - (75 * Math.sin(phi));
+                    }
+                    saturation = keepWithin(r / 0.75, 0, 100);
+                    hue = keepWithin(phi * 180 / Math.PI, 0, 360);
+                    brightness = keepWithin(100 - Math.floor(sliderPos.y * (100 / slider.height())), 0, 100);
+                    hex = hsb2hex({
+                        h: hue,
+                        s: saturation,
+                        b: brightness
+                    });
+
+                    // Update UI
+                    slider.css('backgroundColor', hsb2hex({ h: hue, s: saturation, b: 100 }));
+                    break;
+
+                case 'saturation':
+                    // Calculate hue, saturation, and brightness
+                    hue = keepWithin(parseInt(gridPos.x * (360 / grid.width()), 10), 0, 360);
+                    saturation = keepWithin(100 - Math.floor(sliderPos.y * (100 / slider.height())), 0, 100);
+                    brightness = keepWithin(100 - Math.floor(gridPos.y * (100 / grid.height())), 0, 100);
+                    hex = hsb2hex({
+                        h: hue,
+                        s: saturation,
+                        b: brightness
+                    });
+
+                    // Update UI
+                    slider.css('backgroundColor', hsb2hex({ h: hue, s: 100, b: brightness }));
+                    minicolors.find('.minicolors-grid-inner').css('opacity', saturation / 100);
+                    break;
+
+                case 'brightness':
+                    // Calculate hue, saturation, and brightness
+                    hue = keepWithin(parseInt(gridPos.x * (360 / grid.width()), 10), 0, 360);
+                    saturation = keepWithin(100 - Math.floor(gridPos.y * (100 / grid.height())), 0, 100);
+                    brightness = keepWithin(100 - Math.floor(sliderPos.y * (100 / slider.height())), 0, 100);
+                    hex = hsb2hex({
+                        h: hue,
+                        s: saturation,
+                        b: brightness
+                    });
+
+                    // Update UI
+                    slider.css('backgroundColor', hsb2hex({ h: hue, s: saturation, b: 100 }));
+                    minicolors.find('.minicolors-grid-inner').css('opacity', 1 - (brightness / 100));
+                    break;
+
+                default:
+                    // Calculate hue, saturation, and brightness
+                    hue = keepWithin(360 - parseInt(sliderPos.y * (360 / slider.height()), 10), 0, 360);
+                    saturation = keepWithin(Math.floor(gridPos.x * (100 / grid.width())), 0, 100);
+                    brightness = keepWithin(100 - Math.floor(gridPos.y * (100 / grid.height())), 0, 100);
+                    hex = hsb2hex({
+                        h: hue,
+                        s: saturation,
+                        b: brightness
+                    });
+
+                    // Update UI
+                    grid.css('backgroundColor', hsb2hex({ h: hue, s: 100, b: 100 }));
+                    break;
+
+            }
+            
+            // Handle opacity
+            if( settings.opacity ) {
+                opacity = parseFloat(1 - (opacityPos.y / opacitySlider.height())).toFixed(2);
+            } else {
+                opacity = 1;
+            }
+            
+            updateInput(input, hex, opacity);
+        }
+        else {
+            // Set swatch color
+            swatch.find('span').css({
+                backgroundColor: hex,
+                opacity: opacity
+            });
+
+            // Handle change event
+            doChange(input, hex, opacity);
+        }
+    }
+    
+    // Sets the value of the input and does the appropriate conversions
+    // to respect settings, also updates the swatch
+    function updateInput(input, value, opacity) {
+        var rgb,
+        
+        // Helpful references
+        minicolors = input.parent(),
+        settings = input.data('minicolors-settings'),
+        swatch = minicolors.find('.minicolors-input-swatch');
+        
+        if( settings.opacity ) input.attr('data-opacity', opacity);
+        
+        // Set color string
+        if( settings.format === 'rgb' ) {
+            // Returns RGB(A) string
+            
+            // Checks for input format and does the conversion
+            if ( isRgb(value) ) {
+                rgb = parseRgb(value, true);
+            }
+            else {
+                rgb = hex2rgb(parseHex(value, true));
+            }
+            
+            opacity = input.attr('data-opacity') === '' ? 1 : keepWithin( parseFloat( input.attr('data-opacity') ).toFixed(2), 0, 1 );
+            if( isNaN( opacity ) || !settings.opacity ) opacity = 1;
+
+            if( input.minicolors('rgbObject').a <= 1 && rgb && settings.opacity) {
+                // Set RGBA string if alpha
+                value = 'rgba(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ', ' + parseFloat( opacity ) + ')';
+            } else {
+                // Set RGB string (alpha = 1)
+                value = 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+            }
+        } else {
+            // Returns hex color
+            
+            // Checks for input format and does the conversion
+            if ( isRgb(value) ) {
+                value = rgbString2hex(value);
+            }
+            
+            value = convertCase( value, settings.letterCase );
+        }
+
+        // Update value from picker
+        input.val( value );
+        
+        // Set swatch color
+        swatch.find('span').css({
+            backgroundColor: value,
+            opacity: opacity
+        });
+
+        // Handle change event
+        doChange(input, value, opacity);
+    }
+
+    // Sets the color picker values from the input
+    function updateFromInput(input, preserveInputValue) {
+
+        var hex,
+            hsb,
+            opacity,
+            keywords,
+            alpha,
+            value,
+            x, y, r, phi,
+
+            // Helpful references
+            minicolors = input.parent(),
+            settings = input.data('minicolors-settings'),
+            swatch = minicolors.find('.minicolors-input-swatch'),
+
+            // Panel objects
+            grid = minicolors.find('.minicolors-grid'),
+            slider = minicolors.find('.minicolors-slider'),
+            opacitySlider = minicolors.find('.minicolors-opacity-slider'),
+
+            // Picker objects
+            gridPicker = grid.find('[class$=-picker]'),
+            sliderPicker = slider.find('[class$=-picker]'),
+            opacityPicker = opacitySlider.find('[class$=-picker]');
+
+        // Determine hex/HSB values
+        if( isRgb(input.val()) ) {
+            // If input value is a rgb(a) string, convert it to hex color and update opacity
+            hex = rgbString2hex(input.val());
+            alpha = keepWithin(parseFloat(getAlpha(input.val())).toFixed(2), 0, 1);
+            if( alpha ) {
+                input.attr('data-opacity', alpha);
+            }
+        } else {
+            hex = convertCase(parseHex(input.val(), true), settings.letterCase);
+        }
+
+        if( !hex ){
+            hex = convertCase(parseInput(settings.defaultValue, true), settings.letterCase);
+        }
+        hsb = hex2hsb(hex);
+
+        // Get array of lowercase keywords
+        keywords = !settings.keywords ? [] : $.map(settings.keywords.split(','), function(a) {
+            return $.trim(a.toLowerCase());
+        });
+
+        // Set color string
+        if( input.val() !== '' && $.inArray(input.val().toLowerCase(), keywords) > -1 ) {
+            value = convertCase(input.val());
+        } else {
+            value = isRgb(input.val()) ? parseRgb(input.val()) : hex;
+        }
+
+        // Update input value
+        if( !preserveInputValue ) input.val(value);
+
+        // Determine opacity value
+        if( settings.opacity ) {
+            // Get from data-opacity attribute and keep within 0-1 range
+            opacity = input.attr('data-opacity') === '' ? 1 : keepWithin(parseFloat(input.attr('data-opacity')).toFixed(2), 0, 1);
+            if( isNaN(opacity) ) opacity = 1;
+            input.attr('data-opacity', opacity);
+            swatch.find('span').css('opacity', opacity);
+
+            // Set opacity picker position
+            y = keepWithin(opacitySlider.height() - (opacitySlider.height() * opacity), 0, opacitySlider.height());
+            opacityPicker.css('top', y + 'px');
+        }
+
+        // Set opacity to zero if input value is transparent
+        if( input.val().toLowerCase() === 'transparent' ) {
+            swatch.find('span').css('opacity', 0);
+        }
+
+        // Update swatch
+        swatch.find('span').css('backgroundColor', hex);
+
+        // Determine picker locations
+        switch(settings.control) {
+
+            case 'wheel':
+                // Set grid position
+                r = keepWithin(Math.ceil(hsb.s * 0.75), 0, grid.height() / 2);
+                phi = hsb.h * Math.PI / 180;
+                x = keepWithin(75 - Math.cos(phi) * r, 0, grid.width());
+                y = keepWithin(75 - Math.sin(phi) * r, 0, grid.height());
+                gridPicker.css({
+                    top: y + 'px',
+                    left: x + 'px'
+                });
+
+                // Set slider position
+                y = 150 - (hsb.b / (100 / grid.height()));
+                if( hex === '' ) y = 0;
+                sliderPicker.css('top', y + 'px');
+
+                // Update panel color
+                slider.css('backgroundColor', hsb2hex({ h: hsb.h, s: hsb.s, b: 100 }));
+                break;
+
+            case 'saturation':
+                // Set grid position
+                x = keepWithin((5 * hsb.h) / 12, 0, 150);
+                y = keepWithin(grid.height() - Math.ceil(hsb.b / (100 / grid.height())), 0, grid.height());
+                gridPicker.css({
+                    top: y + 'px',
+                    left: x + 'px'
+                });
+
+                // Set slider position
+                y = keepWithin(slider.height() - (hsb.s * (slider.height() / 100)), 0, slider.height());
+                sliderPicker.css('top', y + 'px');
+
+                // Update UI
+                slider.css('backgroundColor', hsb2hex({ h: hsb.h, s: 100, b: hsb.b }));
+                minicolors.find('.minicolors-grid-inner').css('opacity', hsb.s / 100);
+                break;
+
+            case 'brightness':
+                // Set grid position
+                x = keepWithin((5 * hsb.h) / 12, 0, 150);
+                y = keepWithin(grid.height() - Math.ceil(hsb.s / (100 / grid.height())), 0, grid.height());
+                gridPicker.css({
+                    top: y + 'px',
+                    left: x + 'px'
+                });
+
+                // Set slider position
+                y = keepWithin(slider.height() - (hsb.b * (slider.height() / 100)), 0, slider.height());
+                sliderPicker.css('top', y + 'px');
+
+                // Update UI
+                slider.css('backgroundColor', hsb2hex({ h: hsb.h, s: hsb.s, b: 100 }));
+                minicolors.find('.minicolors-grid-inner').css('opacity', 1 - (hsb.b / 100));
+                break;
+
+            default:
+                // Set grid position
+                x = keepWithin(Math.ceil(hsb.s / (100 / grid.width())), 0, grid.width());
+                y = keepWithin(grid.height() - Math.ceil(hsb.b / (100 / grid.height())), 0, grid.height());
+                gridPicker.css({
+                    top: y + 'px',
+                    left: x + 'px'
+                });
+
+                // Set slider position
+                y = keepWithin(slider.height() - (hsb.h / (360 / slider.height())), 0, slider.height());
+                sliderPicker.css('top', y + 'px');
+
+                // Update panel color
+                grid.css('backgroundColor', hsb2hex({ h: hsb.h, s: 100, b: 100 }));
+                break;
+
+        }
+
+        // Fire change event, but only if minicolors is fully initialized
+        if( input.data('minicolors-initialized') ) {
+            doChange(input, value, opacity);
+        }
+
+    }
+
+    // Runs the change and changeDelay callbacks
+    function doChange(input, value, opacity) {
+
+        var settings = input.data('minicolors-settings'),
+            lastChange = input.data('minicolors-lastChange'),
+            obj,
+            sel,
+            i;
+
+        // Only run if it actually changed
+        if( !lastChange || lastChange.value !== value || lastChange.opacity !== opacity ) {
+            
+            // Remember last-changed value
+            input.data('minicolors-lastChange', {
+                value: value,
+                opacity: opacity
+            });
+
+            // Check and select applicable swatch
+            if (settings.swatches && settings.swatches.length !== 0) {
+                if(!isRgb(value)) {
+                    obj = hex2rgb(value);
+                }
+                else {
+                    obj = parseRgb(value, true);
+                }
+                sel = -1;
+                for(i = 0; i < settings.swatches.length; ++i) {
+                    if (obj.r === settings.swatches[i].r && obj.g === settings.swatches[i].g && obj.b === settings.swatches[i].b && obj.a === settings.swatches[i].a) {
+                        sel = i;
+                        break;
+                    }
+                }
+                
+                input.parent().find('.minicolors-swatches .minicolors-swatch').removeClass('selected');
+                if (i !== -1) {
+                    input.parent().find('.minicolors-swatches .minicolors-swatch').eq(i).addClass('selected');
+                }
+            }
+
+            // Fire change event
+            if( settings.change ) {
+                if( settings.changeDelay ) {
+                    // Call after a delay
+                    clearTimeout(input.data('minicolors-changeTimeout'));
+                    input.data('minicolors-changeTimeout', setTimeout( function() {
+                        settings.change.call(input.get(0), value, opacity);
+                    }, settings.changeDelay));
+                } else {
+                    // Call immediately
+                    settings.change.call(input.get(0), value, opacity);
+                }
+            }
+            input.trigger('change').trigger('input');
+        }
+
+    }
+
+    // Generates an RGB(A) object based on the input's value
+    function rgbObject(input) {
+        var hex = parseHex($(input).val(), true),
+            rgb = hex2rgb(hex),
+            opacity = $(input).attr('data-opacity');
+        if( !rgb ) return null;
+        if( opacity !== undefined ) $.extend(rgb, { a: parseFloat(opacity) });
+        return rgb;
+    }
+
+    // Generates an RGB(A) string based on the input's value
+    function rgbString(input, alpha) {
+        var hex = parseHex($(input).val(), true),
+            rgb = hex2rgb(hex),
+            opacity = $(input).attr('data-opacity');
+        if( !rgb ) return null;
+        if( opacity === undefined ) opacity = 1;
+        if( alpha ) {
+            return 'rgba(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ', ' + parseFloat(opacity) + ')';
+        } else {
+            return 'rgb(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ')';
+        }
+    }
+
+    // Converts to the letter case specified in settings
+    function convertCase(string, letterCase) {
+        return letterCase === 'uppercase' ? string.toUpperCase() : string.toLowerCase();
+    }
+
+    // Parses a string and returns a valid hex string when possible
+    function parseHex(string, expand) {
+        string = string.replace(/^#/g, '');
+        if( !string.match(/^[A-F0-9]{3,6}/ig) ) return '';
+        if( string.length !== 3 && string.length !== 6 ) return '';
+        if( string.length === 3 && expand ) {
+            string = string[0] + string[0] + string[1] + string[1] + string[2] + string[2];
+        }
+        return '#' + string;
+    }
+
+    // Parses a string and returns a valid RGB(A) string when possible
+    function parseRgb(string, obj) {
+
+        var values = string.replace(/[^\d,.]/g, ''),
+            rgba = values.split(',');
+
+        rgba[0] = keepWithin(parseInt(rgba[0], 10), 0, 255);
+        rgba[1] = keepWithin(parseInt(rgba[1], 10), 0, 255);
+        rgba[2] = keepWithin(parseInt(rgba[2], 10), 0, 255);
+        if( rgba[3] ) {
+            rgba[3] = keepWithin(parseFloat(rgba[3], 10), 0, 1);
+        }
+
+        // Return RGBA object
+        if( obj ) {
+            return {
+                r: rgba[0],
+                g: rgba[1],
+                b: rgba[2],
+                a: rgba[3] ? rgba[3] : null
+            };
+        }
+
+        // Return RGBA string
+        if( typeof(rgba[3]) !== 'undefined' && rgba[3] <= 1 ) {
+            return 'rgba(' + rgba[0] + ', ' + rgba[1] + ', ' + rgba[2] + ', ' + rgba[3] + ')';
+        } else {
+            return 'rgb(' + rgba[0] + ', ' + rgba[1] + ', ' + rgba[2] + ')';
+        }
+
+    }
+
+    // Parses a string and returns a valid color string when possible
+    function parseInput(string, expand) {
+        if( isRgb(string) ) {
+            // Returns a valid rgb(a) string
+            return parseRgb(string);
+        } else {
+            return parseHex(string, expand);
+        }
+    }
+
+    // Keeps value within min and max
+    function keepWithin(value, min, max) {
+        if( value < min ) value = min;
+        if( value > max ) value = max;
+        return value;
+    }
+
+    // Checks if a string is a valid RGB(A) string
+    function isRgb(string) {
+        var rgb = string.match(/^rgba?[\s+]?\([\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?/i);
+        return (rgb && rgb.length === 4) ? true : false;
+    }
+
+    // Function to get alpha from a RGB(A) string
+    function getAlpha(rgba) {
+        rgba = rgba.match(/^rgba?[\s+]?\([\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?,[\s+]?(\d+(\.\d{1,2})?|\.\d{1,2})[\s+]?/i);
+        return (rgba && rgba.length === 6) ? rgba[4] : '1';
+    }
+
+   // Converts an HSB object to an RGB object
+    function hsb2rgb(hsb) {
+        var rgb = {};
+        var h = Math.round(hsb.h);
+        var s = Math.round(hsb.s * 255 / 100);
+        var v = Math.round(hsb.b * 255 / 100);
+        if(s === 0) {
+            rgb.r = rgb.g = rgb.b = v;
+        } else {
+            var t1 = v;
+            var t2 = (255 - s) * v / 255;
+            var t3 = (t1 - t2) * (h % 60) / 60;
+            if( h === 360 ) h = 0;
+            if( h < 60 ) { rgb.r = t1; rgb.b = t2; rgb.g = t2 + t3; }
+            else if( h < 120 ) {rgb.g = t1; rgb.b = t2; rgb.r = t1 - t3; }
+            else if( h < 180 ) {rgb.g = t1; rgb.r = t2; rgb.b = t2 + t3; }
+            else if( h < 240 ) {rgb.b = t1; rgb.r = t2; rgb.g = t1 - t3; }
+            else if( h < 300 ) {rgb.b = t1; rgb.g = t2; rgb.r = t2 + t3; }
+            else if( h < 360 ) {rgb.r = t1; rgb.g = t2; rgb.b = t1 - t3; }
+            else { rgb.r = 0; rgb.g = 0; rgb.b = 0; }
+        }
+        return {
+            r: Math.round(rgb.r),
+            g: Math.round(rgb.g),
+            b: Math.round(rgb.b)
+        };
+    }
+
+    // Converts an RGB string to a hex string
+    function rgbString2hex(rgb){
+        rgb = rgb.match(/^rgba?[\s+]?\([\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?/i);
+        return (rgb && rgb.length === 4) ? '#' +
+        ('0' + parseInt(rgb[1],10).toString(16)).slice(-2) +
+        ('0' + parseInt(rgb[2],10).toString(16)).slice(-2) +
+        ('0' + parseInt(rgb[3],10).toString(16)).slice(-2) : '';
+    }
+
+    // Converts an RGB object to a hex string
+    function rgb2hex(rgb) {
+        var hex = [
+            rgb.r.toString(16),
+            rgb.g.toString(16),
+            rgb.b.toString(16)
+        ];
+        $.each(hex, function(nr, val) {
+            if (val.length === 1) hex[nr] = '0' + val;
+        });
+        return '#' + hex.join('');
+    }
+
+    // Converts an HSB object to a hex string
+    function hsb2hex(hsb) {
+        return rgb2hex(hsb2rgb(hsb));
+    }
+
+    // Converts a hex string to an HSB object
+    function hex2hsb(hex) {
+        var hsb = rgb2hsb(hex2rgb(hex));
+        if( hsb.s === 0 ) hsb.h = 360;
+        return hsb;
+    }
+
+    // Converts an RGB object to an HSB object
+    function rgb2hsb(rgb) {
+        var hsb = { h: 0, s: 0, b: 0 };
+        var min = Math.min(rgb.r, rgb.g, rgb.b);
+        var max = Math.max(rgb.r, rgb.g, rgb.b);
+        var delta = max - min;
+        hsb.b = max;
+        hsb.s = max !== 0 ? 255 * delta / max : 0;
+        if( hsb.s !== 0 ) {
+            if( rgb.r === max ) {
+                hsb.h = (rgb.g - rgb.b) / delta;
+            } else if( rgb.g === max ) {
+                hsb.h = 2 + (rgb.b - rgb.r) / delta;
+            } else {
+                hsb.h = 4 + (rgb.r - rgb.g) / delta;
+            }
+        } else {
+            hsb.h = -1;
+        }
+        hsb.h *= 60;
+        if( hsb.h < 0 ) {
+            hsb.h += 360;
+        }
+        hsb.s *= 100/255;
+        hsb.b *= 100/255;
+        return hsb;
+    }
+
+    // Converts a hex string to an RGB object
+    function hex2rgb(hex) {
+        hex = parseInt(((hex.indexOf('#') > -1) ? hex.substring(1) : hex), 16);
+        return {
+            /* jshint ignore:start */
+            r: hex >> 16,
+            g: (hex & 0x00FF00) >> 8,
+            b: (hex & 0x0000FF)
+            /* jshint ignore:end */
+        };
+    }
+
+    // Handle events
+    $(document)
+        // Hide on clicks outside of the control
+        .on('mousedown.minicolors touchstart.minicolors', function(event) {
+            if( !$(event.target).parents().add(event.target).hasClass('minicolors') ) {
+                hide();
+            }
+        })
+        // Start moving
+        .on('mousedown.minicolors touchstart.minicolors', '.minicolors-grid, .minicolors-slider, .minicolors-opacity-slider', function(event) {
+            var target = $(this);
+            event.preventDefault();
+            $(document).data('minicolors-target', target);
+            move(target, event, true);
+        })
+        // Move pickers
+        .on('mousemove.minicolors touchmove.minicolors', function(event) {
+            var target = $(document).data('minicolors-target');
+            if( target ) move(target, event);
+        })
+        // Stop moving
+        .on('mouseup.minicolors touchend.minicolors', function() {
+            $(this).removeData('minicolors-target');
+        })
+        // Selected a swatch
+        .on('click.minicolors', '.minicolors-swatches li', function(event) {
+            event.preventDefault();
+            var target = $(this), input = target.parents('.minicolors').find('.minicolors-input'), color = target.data('swatch-color');
+            updateInput(input, color, getAlpha(color));
+            updateFromInput(input);
+        })
+        // Show panel when swatch is clicked
+        .on('mousedown.minicolors touchstart.minicolors', '.minicolors-input-swatch', function(event) {
+            var input = $(this).parent().find('.minicolors-input');
+            event.preventDefault();
+            show(input);
+        })
+        // Show on focus
+        .on('focus.minicolors', '.minicolors-input', function() {
+            var input = $(this);
+            if( !input.data('minicolors-initialized') ) return;
+            show(input);
+        })
+        // Update value on blur
+        .on('blur.minicolors', '.minicolors-input', function() {
+            var input = $(this),
+                settings = input.data('minicolors-settings'),
+                keywords,
+                hex,
+                rgba,
+                swatchOpacity,
+                value;
+
+            if( !input.data('minicolors-initialized') ) return;
+
+            // Get array of lowercase keywords
+            keywords = !settings.keywords ? [] : $.map(settings.keywords.split(','), function(a) {
+                return $.trim(a.toLowerCase());
+            });
+
+            // Set color string
+            if( input.val() !== '' && $.inArray(input.val().toLowerCase(), keywords) > -1 ) {
+                value = input.val();
+            } else {
+                // Get RGBA values for easy conversion
+                if( isRgb(input.val()) ) {
+                    rgba = parseRgb(input.val(), true);
+                } else {
+                    hex = parseHex(input.val(), true);
+                    rgba = hex ? hex2rgb(hex) : null;
+                }
+
+                // Convert to format
+                if( rgba === null ) {
+                    value = settings.defaultValue;
+                } else if( settings.format === 'rgb' ) {
+                    value = settings.opacity ?
+                        parseRgb('rgba(' + rgba.r + ',' + rgba.g + ',' + rgba.b + ',' + input.attr('data-opacity') + ')') :
+                        parseRgb('rgb(' + rgba.r + ',' + rgba.g + ',' + rgba.b + ')');
+                } else {
+                    value = rgb2hex(rgba);
+                }
+            }
+
+            // Update swatch opacity
+            swatchOpacity = settings.opacity ? input.attr('data-opacity') : 1;
+            if( value.toLowerCase() === 'transparent' ) swatchOpacity = 0;
+            input
+                .closest('.minicolors')
+                .find('.minicolors-input-swatch > span')
+                .css('opacity', swatchOpacity);
+
+            // Set input value
+            input.val(value);
+
+            // Is it blank?
+            if( input.val() === '' ) input.val(parseInput(settings.defaultValue, true));
+
+            // Adjust case
+            input.val( convertCase(input.val(), settings.letterCase) );
+
+        })
+        // Handle keypresses
+        .on('keydown.minicolors', '.minicolors-input', function(event) {
+            var input = $(this);
+            if( !input.data('minicolors-initialized') ) return;
+            switch(event.keyCode) {
+                case 9: // tab
+                    hide();
+                    break;
+                case 13: // enter
+                case 27: // esc
+                    hide();
+                    input.blur();
+                    break;
+            }
+        })
+        // Update on keyup
+        .on('keyup.minicolors', '.minicolors-input', function() {
+            var input = $(this);
+            if( !input.data('minicolors-initialized') ) return;
+            updateFromInput(input, true);
+        })
+        // Update on paste
+        .on('paste.minicolors', '.minicolors-input', function() {
+            var input = $(this);
+            if( !input.data('minicolors-initialized') ) return;
+            setTimeout( function() {
+                updateFromInput(input, true);
+            }, 1);
+        });
+
+}) (jQuery);
 
 Inlet = (function() {
   function inlet(ed, options) {
@@ -3193,18 +2471,12 @@ Inlet = (function() {
     }
     // this will be overwritten if hslMatch hits
     // so that the "old color view" will initilize correctly
-
-    // jscolor class + styles
-    // jscolor {hash:true, width:243, height:150, borderColor:'#FFF'}
-    var node = document.createElement("input");
-    node.className = "jscolor {hash:true, width:243, height:150, borderColor:'#FFF'}";
-    node.setAttribute('id', 'picker');
-    node.setAttribute('style', "position: absolute; top: 0; left: 0; width: 0; height: 0; visibility: hidden; overflow: hidden;")
+    
+    var node = document.createElement("div");
+    node.setAttribute('id', 'pickerHolder');
+    // node.setAttribute('style', "position: absolute; top: 0; left: 0; width: 0; height: 0; visibility: hidden; overflow: hidden; z-index: 99999999;")
     document.body.appendChild(node);
     
-    picker = document.querySelector('#picker')
-    // setup colorpicker position
-
     //Handle clicks
     function onClick(ev) {
       // bail out if we were doing a selection and not a click
@@ -3237,50 +2509,65 @@ Inlet = (function() {
         var color = hexMatch.string;
         // reconstructing the picker so that the previous color
         // element shows the color clicked
-        picker = document.querySelector('#picker');
-        picker.style.position = "absolute";
-        picker.style.top = pickerTop + "px";
-        picker.style.left = pickerLeft + "px";
-        
-        picker.jscolor.fromString(color);
-        picker.jscolor.show();
-        
-        picker.jscolor.onFineChange = function() {
-          //translate hsl return to hex
-          pickerCallback(picker.jscolor.toHEXString(),'hex');
-          return false;
-        };
+        $('#pickerHolder').empty().append('<input type="text" id="picker" data-opacty="1">');
+        $('#picker').minicolors({
+          format: 'rgb',
+          defaultValue: color,
+          opacity: true,
+          inline: true,
+          change: function(value, opacity) {
+            if (opacity < 1) {
+              pickerCallback(tinycolor(this.value).toRgbString(),'hex');
+              pickerCallback(tinycolor(this.value).toRgbString(),'rgb');
+            } else {
+              pickerCallback(tinycolor(this.value).toHexString(),'hex');
+            }
+          }
+        }).focus();
+        $('#pickerHolder').css({
+          "position" : "absolute",
+          "top"      : pickerTop + "px",
+          "left"     : pickerLeft + "px",
+          "zIndex"   : "999999999999"
+        });
       } else if (hslMatch) {
-        var color = tinycolor(hslMatch.string);
-        
-        picker = document.querySelector('#picker');
-        picker.style.position = "absolute";
-        picker.style.top = pickerTop + "px";
-        picker.style.left = pickerLeft + "px";
-        
-        picker.jscolor.fromString(color.toHexString());
-        picker.jscolor.show();
-        
-        picker.jscolor.onFineChange = function() {
-          //translate hsl return to hex
-          pickerCallback(tinycolor(picker.value).toHslString(),'hsl');
-          return false;
-        };
+        var color = hslMatch.string;
+        var hasAlpha = parseFloat(color.split(',')[3]);
+        var alphaVal = ( hasAlpha ) ? hasAlpha : "1";
+        $('#pickerHolder').empty().append('<input type="text" id="picker" value="'+ tinycolor(color).toRgbString() +'" data-opacty="'+ alphaVal +'">');
+        $('#picker').minicolors({
+          format: 'rgb',
+          opacity: true,
+          inline: true,
+          change: function(value, opacity) {
+            pickerCallback(tinycolor(this.value).toHslString(),'hsl');
+          }
+        }).focus();
+        $('#pickerHolder').css({
+          "position" : "absolute",
+          "top"      : pickerTop + "px",
+          "left"     : pickerLeft + "px",
+          "zIndex"   : "999999999999"
+        });
       } else if(rgbMatch) {
         var color = rgbMatch.string;
-        picker = document.querySelector('#picker');
-        picker.style.position = "absolute";
-        picker.style.top = pickerTop + "px";
-        picker.style.left = pickerLeft + "px";
-        
-        picker.jscolor.fromString(color);
-        picker.jscolor.show();
-        
-        picker.jscolor.onFineChange = function() {
-          //translate hsl return to hex
-          pickerCallback(picker.jscolor.toRGBString(),'rgb');
-          return false;
-        };
+        var hasAlpha = parseFloat(color.split(',')[3]);
+        var alphaVal = ( hasAlpha ) ? hasAlpha : "1";
+        $('#pickerHolder').empty().append('<input type="text" id="picker" value="'+ color +'" data-opacty="'+ alphaVal +'">');
+        $('#picker').minicolors({
+          format: 'rgb',
+          opacity: true,
+          inline: true,
+          change: function(value, opacity) {
+            pickerCallback(tinycolor(this.value).toRgbString(),'rgb');
+          }
+        }).focus();
+        $('#pickerHolder').css({
+          "position" : "absolute",
+          "top"      : pickerTop + "px",
+          "left"     : pickerLeft + "px",
+          "zIndex"   : "999999999999"
+        });
       } else if(numberMatch) {
         slider.value = 0;
         var value = parseFloat(numberMatch.string);
@@ -3343,7 +2630,7 @@ Inlet = (function() {
         clickerDiv.style.visibility = "visible";
 
       } else {
-
+        $('#pickerHolder').empty();
       }
     }
 
@@ -3389,7 +2676,7 @@ Inlet = (function() {
           break;
 
         case 'rgb':
-          re = /rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)/g;
+          re = /rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:\s*,\s*(\d+(?:\.\d+)?)\s*)?\)/g;
           break;
 
         case 'hex':

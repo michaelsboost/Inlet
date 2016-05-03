@@ -1,58 +1,84 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset='utf-8' />
     <title>Inlet.js</title>
-    <link rel="stylesheet" href="lib/codemirror/lib/codemirror.css">
-    <link rel="stylesheet" href="lib/codemirror/monokai.css">
-    <link rel="stylesheet" href="inlet.css" type="text/css" media="screen"  title="no title" charset="utf-8">
-    <link rel="stylesheet" href="lib/index.css" type="text/css" media="screen"  title="no title" charset="utf-8">
-    <link href='http://fonts.googleapis.com/css?family=Alegreya:900italic' rel='stylesheet' type='text/css'>
-  </head>
-  <body>
-    <a href="https://github.com/mikethedj4/Inlet">
-      <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub">
-    </a>
-    <div id="header">
-      <h1 id="title">Inlet</h1>
-    </div>
-    <div id="description">
-      Play with the code in CodeMirror just by clicking on numbers and colors!<br>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1.0">
+    <style>
+      @import url("lib/alertifyjs/css/alertify.min.css");
+      @import url("lib/alertifyjs/css/themes/default.min.css");
+      @import url("lib/codemirror/lib/codemirror.css");
+      @import url("lib/codemirror/monokai.css");
+      @import url("inlet.css");
+      @import url("lib/jqueryminicolors.css");
 
-      <strong><a href="https://github.com/mikethedj4/Inlet">check out the code</a></strong><br><br>
-      by <strong><a href="http://twitter.com/enjalot">@enjalot</a></strong>, <strong><a href="http://twitter.com/mrejfox">@mrejfox</a></strong>, <strong><a href="http://github.com/georules">@georules</a></strong>, and <strong><a href="http://twitter.com/mikethedj4">@mikethedj4</a></strong>
+      html, body {
+        height: 100%;
+        margin: 0;
+      }
 
-      <span id="example">42 === The answer to life, the universe and everything.</div>
-    </div>
+      body {
+        font: normal 100% 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        background: #272822;
+      }
 
-    <div id='editor'></div>
-
+      .CodeMirror {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Alegreya:900italic">
+    <script src="lib/jquery.js"></script>
+    <script src="lib/alertifyjs/alertify.min.js"></script>
     <script src="lib/codemirror/lib/codemirror.js"></script>
     <script src="lib/codemirror/mode/javascript/javascript.js"></script>
+  </head>
+  <body>
+    <a href="https://github.com/mikethedj4/Inlet" target="_blank" style="position: absolute; top: 0; right: 0; border: 0; z-index: 9;">
+      <img src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub">
+    </a>
+    <textarea data-editor="editor">// Click on the rgb value or number below:
+var color = "rgba(10, 33, 16, 0.65)";
+
+var theAnswer = 42;
+
+var is = true;
+
+// Usage looks like:
+// var editor = CodeMirror(...);
+// Inlet(editor);
+
+// You can also use hsl colors, try replacing #0A2110 with hsla(136, 53%, 8%, 0.65).</textarea>
+
     <script src="inlet.js"></script>
-
     <script>
-      var editor = CodeMirror(document.getElementById("editor"),{
-        //default code for example:
-        value: '//Click on the hex value or number below:\n\nvar color = "#D1FFDB"\n\nvar theAnswer = 42;\n\nvar is = true;\n\n//Usage looks like:\n//var editor = CodeMirror(...);\n//Inlet(editor);\n\n//You can also use hsl colors, try replacing #D1FFDB with hsl(133,100%,91%)',
-        mode:  "javascript",
-        theme: "monokai",
-        lineNumbers: true,
-      });
-      editor.on("change", changeFunction)
-      function changeFunction() {
-        //let's affect the page when the code changes!
-        eval(editor.getValue());
-        var example = document.getElementById("example");
-        var isIt = is ? "===" : "!==";
-        example.innerHTML = theAnswer + " " + isIt + " The answer to life, the universe and everything.";
-        //example.style.left = x+"px";
-        //example.style.top = y+"px";
-        document.body.style['background-color'] = color;
-      };
-      changeFunction();
+    var editor = CodeMirror.fromTextArea(document.querySelector("[data-editor=editor]"), {
+      mode:  "javascript",
+      theme: "monokai",
+      lineNumbers: true,
+      lineWrapping: true,
+      autoCloseTags: true
+    })
+    Inlet(editor)
 
-      var inlet = Inlet(editor);
+    function changeFunction() {
+      eval(editor.getValue())
+      document.body.style["background"] = color
+      // .cm-s-monokai .CodeMirror, .CodeMirror-gutters
+      document.querySelector(".cm-s-monokai").style["background"] = color
+      document.querySelector(".CodeMirror-gutters").style["background"] = color
+    };
+    changeFunction()
+    editor.on("change", changeFunction)
+
+    // Notifications
+    alertify.message('<a href="https://github.com/enjalot/Inlet" target="_blank">Created</a> by <a href="http://twitter.com/enjalot" target="_blank">@enjalot</a>, <a href="http://twitter.com/mrejfox" target="_blank">@mrejfox</a> and <a href="http://github.com/georules" target="_blank">@georules</a>')
+    setTimeout(function() {
+      alertify.message('Forked by <a href="http://twitter.com/mikethedj4" target="_blank">@mikethedj4</a>');
+    }, 1500)
     </script>
   </body>
 </html>
