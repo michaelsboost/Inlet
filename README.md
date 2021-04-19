@@ -1,7 +1,7 @@
 # Inlet
 Inlet is a "plugin" for CodeMirror2+ which pops up an inline color picker and numeric slider whenever you click on a number, a Hex String (ex. "`#0004ff`"), RGB String (ex. "`rgb(0, 4, 255)`"), or HSL String (ex. "`hsla(239, 100%, 50%, 1)`").
 
-See an example at [http://michaelsboost.github.com/Inlet](http://michaelsboost.github.com/Inlet)
+See an example at [http://michaelsboost.github.io/Inlet](http://michaelsboost.github.io/Inlet)
 
 # About
 
